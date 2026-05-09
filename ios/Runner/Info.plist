@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>GMP Airdrop uses the camera to scan local receiver QR codes.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>GMP Airdrop connects to receivers on your local Wi-Fi network for offline file transfer.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GMP Airdrop lets you choose photos and videos to send to a local receiver.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>GMP Airdrop may save selected transfer items when you choose to keep them on this device.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

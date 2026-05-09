@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'src/app_shell.dart';
+import 'src/features/ios_companion/ios_companion_shell.dart';
 import 'src/l10n/app_localizations.dart';
 import 'src/theme/gmp_theme.dart';
 
@@ -37,7 +40,9 @@ class _GmpAirdropAppState extends State<GmpAirdropApp> {
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      home: AppShell(onLocaleChanged: _setLocale),
+      home: Platform.isIOS
+          ? const IosCompanionShell()
+          : AppShell(onLocaleChanged: _setLocale),
     );
   }
 }
