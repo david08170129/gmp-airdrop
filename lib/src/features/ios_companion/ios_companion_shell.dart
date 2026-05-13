@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:mobile_scanner/mobile_scanner.dart';
+
 import '../../theme/gmp_colors.dart';
 import '../../widgets/gmp_logo.dart';
 
@@ -231,10 +233,20 @@ class _ScannerPlaceholder extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.black,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(28),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
+            MobileScanner(
+              onDetect: (capture) {
+                final List<Barcode> barcodes = capture.barcodes;
+
+                for (final barcode in barcodes) {
+                  debugPrint('QR Found: ${barcode.rawValue}');
+                }
+              },
+            ),
             Center(
               child: Container(
                 width: 220,
@@ -242,23 +254,6 @@ class _ScannerPlaceholder extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(color: Colors.white, width: 3),
-                ),
-              ),
-            ),
-            const Center(
-              child: Icon(Icons.qr_code_2_rounded,
-                  size: 92, color: Color(0xFF77DCCB)),
-            ),
-            const Positioned(
-              left: 22,
-              right: 22,
-              bottom: 24,
-              child: Text(
-                'Camera scanner placeholder',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
