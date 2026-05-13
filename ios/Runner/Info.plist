@@ -22,7 +22,8 @@
     <key>CFBundleShortVersionString</key>
 	<string>$(FLUTTER_BUILD_NAME)</string>
    
-  
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
 
 	<key>CFBundleSignature</key>
 	<string>????</string>
