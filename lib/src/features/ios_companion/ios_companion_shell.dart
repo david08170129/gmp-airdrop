@@ -243,7 +243,11 @@ class _ScannerPlaceholder extends StatelessWidget {
                 final List<Barcode> barcodes = capture.barcodes;
 
                 for (final barcode in barcodes) {
-                  debugPrint('QR Found: ${barcode.rawValue}');
+                  ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    content: Text('QR Found: ${barcode.rawValue}'),
+  ),
+);
                 }
               },
             ),
