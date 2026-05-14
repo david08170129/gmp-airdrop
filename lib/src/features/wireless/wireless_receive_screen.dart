@@ -212,6 +212,16 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
         );
       }
       await widget.state.receiveWirelessLocalFiles(files);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Transfer complete: ${files.length} files received',
+            ),
+          ),
+        );
+      }
     } catch (error) {
       _error = 'Could not save dropped files: $error';
     } finally {
@@ -882,7 +892,7 @@ class _DropHintTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      busy ? 'Saving drops' : 'Drop files',
+                      busy ? 'Receiving files...' : 'Ready to receive files',
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
