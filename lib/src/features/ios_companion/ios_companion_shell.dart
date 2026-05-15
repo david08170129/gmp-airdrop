@@ -149,11 +149,19 @@ class _OnboardingPage extends StatelessWidget {
           title: 'Open the upload page',
           body: 'Launch Safari handoff or embedded upload view for local Wi-Fi transfers.',
         ),
-        const _StepCard(
-          icon: Icons.ios_share_rounded,
-          title: 'Share into GMP Airdrop',
-          body: 'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
-        ),
+        
+
+const _StepCard(
+  icon: Icons.ios_share_rounded,
+  title: 'Share into GMP Airdrop',
+  body: 'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
+),
+
+const SizedBox(height: 18),
+
+const _NearbyDevicesCard(),
+
+
       ],
     );
   }
@@ -548,4 +556,49 @@ class IosTransferHistoryItem {
   final String title;
   final String subtitle;
   final String status;
+}
+
+
+class _NearbyDevicesCard extends StatelessWidget {
+  const _NearbyDevicesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: GmpColors.blue.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.wifi_tethering_rounded,
+                color: GmpColors.blue,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Nearby devices',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Searching local Wi-Fi for GMP AirDrop receivers...',
+            style: TextStyle(color: GmpColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
 }

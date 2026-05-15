@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+
+
 import 'package:flutter/services.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:network_info_plus/network_info_plus.dart';
 
 import '../../core/file_name_safety.dart';
 import '../../core/file_count_summary.dart';
@@ -70,6 +73,9 @@ class WirelessReceiveService {
   static const maxUploadBytes = 10 * 1024 * 1024 * 1024;
 
   HttpServer? _server;
+  RawDatagramSocket? _discoverySocket;
+  Timer? _discoveryTimer;
+
   String? _token;
   WirelessReceiveSession? _session;
   final _events = StreamController<WirelessReceiveItem>.broadcast();
@@ -79,6 +85,8 @@ class WirelessReceiveService {
   bool get isRunning => _server != null;
 
   Future<void> receiveLocalFiles(List<File> files) async {
+
+
     final received = <WirelessReceiveItem>[];
     for (final file in files) {
       if (!await file.exists()) continue;
@@ -136,6 +144,47 @@ class WirelessReceiveService {
       await saveWirelessHistory(_historyItem(received));
     }
   }
+  Future<void> _startDiscoveryBroadcast(
+  String ip,
+  int port,
+) async {
+  _discoverySocket ??=
+      await RawDatagramSocket.bind(
+    InternetAddress.anyIPv4,
+    0,
+    reuseAddress: true,
+    reusePort: true,
+  );
+
+  _discoverySocket!.broadcastEnabled = true;
+
+  final info = NetworkInfo();
+  final wifiName = await info.getWifiName();
+
+  _discoveryTimer?.cancel();
+
+  _discoveryTimer = Timer.periodic(
+    const Duration(seconds: 2),
+    (_) {
+      final payload = jsonEncode({
+        'name': wifiName ?? 'GMP AirDrop',
+        'ip': ip,
+        'port': port,
+      });
+
+      _discoverySocket!.send(
+        utf8.encode(payload),
+        InternetAddress('255.255.255.255'),
+        45454,
+      );
+    },
+  );
+}
+  
+  
+  
+  
+  
 
   Future<WirelessReceiveSession> start() async {
     if (_session != null && _server != null) return _session!;
@@ -152,6 +201,13 @@ class WirelessReceiveService {
       url: 'http://$ipAddress:${server.port}/?t=$token',
       availableBytes: availableBytes,
     );
+
+
+
+    await _startDiscoveryBroadcast(
+  ipAddress,
+  server.port,
+);
     unawaited(_serve(server));
     return _session!;
   }
