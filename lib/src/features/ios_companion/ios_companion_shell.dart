@@ -665,10 +665,44 @@ class _NearbyDevicesCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Searching local Wi-Fi for GMP AirDrop receivers...',
-            style: TextStyle(color: GmpColors.muted),
-          ),
+          
+          
+          
+         
+        
+        if (devices.isEmpty)
+  const Text(
+    'Searching local Wi-Fi for GMP AirDrop receivers...',
+    style: TextStyle(color: GmpColors.muted),
+  )
+else
+  ...devices.map(
+    (device) => Padding(
+      padding: const EdgeInsets.only(top: 10),
+
+
+     
+
+child: ListTile(
+  onTap: () => launchUrl(Uri.parse(device.url)),
+  shape: RoundedRectangleBorder(
+
+          borderRadius: BorderRadius.circular(16),
+        ),
+        tileColor: GmpColors.blue.withValues(alpha: 0.06),
+        leading: Icon(
+          Icons.desktop_windows_rounded,
+          color: GmpColors.blue,
+        ),
+        title: Text(device.name),
+        subtitle: Text(device.ip),
+        trailing: const Icon(Icons.chevron_right_rounded),
+      ),
+    ),
+  ),
+        
+        
+        
         ],
       ),
     );
