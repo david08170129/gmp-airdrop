@@ -602,3 +602,17 @@ class _NearbyDevicesCard extends StatelessWidget {
     );
   }
 }
+
+class NearbyDevice {
+  const NearbyDevice({
+    required this.name,
+    required this.ip,
+    required this.port,
+  });
+
+  final String name;
+  final String ip;
+  final int port;
+
+  String get url => 'http://$ip:$port';
+}
