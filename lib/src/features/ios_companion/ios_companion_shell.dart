@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -16,6 +19,49 @@ class IosCompanionShell extends StatefulWidget {
 class _IosCompanionShellState extends State<IosCompanionShell> {
   int _index = 0;
 
+Future<void> _startNearbyListener() async {
+  _listenerSocket ??=
+      await RawDatagramSocket.bind(
+    InternetAddress.anyIPv4,
+    45454,
+    reuseAddress: true,
+    reusePort: true,
+  );
+
+  _listenerSocket!.listen((event) {
+    if (event != RawSocketEvent.read) return;
+
+    final datagram = _listenerSocket!.receive();
+    if (datagram == null) return;
+
+    try {
+      final payload = jsonDecode(
+        utf8.decode(datagram.data),
+      );
+
+      final device = NearbyDevice(
+        name: payload['name'],
+        ip: payload['ip'],
+        port: payload['port'],
+      );
+
+      final exists = _nearbyDevices.any(
+        (d) => d.ip == device.ip,
+      );
+
+      if (!exists) {
+        setState(() {
+          _nearbyDevices.add(device);
+        });
+      }
+    } catch (_) {}
+  });
+}
+
+  RawDatagramSocket? _listenerSocket;
+
+final List<NearbyDevice> _nearbyDevices = [];
+
   final _history = const [
     IosTransferHistoryItem(
       title: 'Safari upload session',
@@ -24,10 +70,22 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
     ),
   ];
 
+@override
+void initState() {
+  super.initState();
+  _startNearbyListener();
+}
+
+
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _OnboardingPage(onScanPressed: () => setState(() => _index = 1)),
+      
+_OnboardingPage(
+  onScanPressed: () => setState(() => _index = 1),
+  devices: _nearbyDevices,
+),
+
       const _QrScannerPage(),
       const _UploadWebPage(),
       const _SharedFilesPage(),
@@ -125,10 +183,17 @@ class _IosPage extends StatelessWidget {
   }
 }
 
+
+
 class _OnboardingPage extends StatelessWidget {
-  const _OnboardingPage({required this.onScanPressed});
+  const _OnboardingPage({
+    required this.onScanPressed,
+    required this.devices,
+  });
+
 
   final VoidCallback onScanPressed;
+  final List<NearbyDevice> devices;
 
   @override
   Widget build(BuildContext context) {
@@ -157,10 +222,12 @@ const _StepCard(
   body: 'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
 ),
 
-const SizedBox(height: 18),
 
-const _NearbyDevicesCard(),
 
+
+
+
+_NearbyDevicesCard(devices: devices),
 
       ],
     );
@@ -559,8 +626,13 @@ class IosTransferHistoryItem {
 }
 
 
+
 class _NearbyDevicesCard extends StatelessWidget {
-  const _NearbyDevicesCard();
+  const _NearbyDevicesCard({
+    required this.devices,
+  });
+
+  final List<NearbyDevice> devices;
 
   @override
   Widget build(BuildContext context) {
