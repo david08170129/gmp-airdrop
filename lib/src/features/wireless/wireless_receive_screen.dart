@@ -120,21 +120,59 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
                     _DropHintTile(active: _dragging, busy: _dropBusy),
                   _PathTile(
                     icon: Icons.image_rounded,
+                    
                     label: 'Photos',
+                    
+
+                  onTap: () async {
+  if (Platform.isWindows) {
+    await Process.run(
+      'explorer',
+      [r'Documents\GMP_Airdrop\Wireless\Photos'],
+    );
+  }
+},
+
+
                     path: Platform.isAndroid
                         ? 'App storage/GMP_Airdrop/Wireless/Photos'
-                        : r'Pictures\GMP_Airdrop\Wireless\Photos',
+                        : r'Documents\GMP_Airdrop\Wireless\Photos',
                   ),
                   _PathTile(
                     icon: Icons.movie_rounded,
                     label: 'Videos',
+                    
+                    onTap: () async {
+  if (Platform.isWindows) {
+    await Process.run(
+      'explorer',
+      [r'Documents\GMP_Airdrop\Wireless\Videos'],
+    );
+  }
+},
+
+
+
                     path: Platform.isAndroid
                         ? 'App storage/GMP_Airdrop/Wireless/Videos'
-                        : r'Videos\GMP_Airdrop\Wireless\Videos',
+                        : r'Documents\GMP_Airdrop\Wireless\Videos',
                   ),
                   _PathTile(
                     icon: Icons.description_rounded,
                     label: 'Documents',
+                  
+
+onTap: () async {
+  if (Platform.isWindows) {
+    await Process.run(
+      'explorer',
+      [r'Documents\GMP_Airdrop\Wireless\Documents'],
+    );
+  }
+},
+
+
+
                     path: Platform.isAndroid
                         ? 'App storage/GMP_Airdrop/Wireless/Documents'
                         : r'Documents\GMP_Airdrop\Wireless\Documents',
@@ -871,7 +909,11 @@ class _DropHintTile extends StatelessWidget {
     return SizedBox(
       width: 250,
       height: 108,
-      child: PremiumHoverSurface(
+      
+    child: PremiumHoverSurface(
+
+      
+
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(16),
@@ -908,8 +950,10 @@ class _DropHintTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+     
+     ), // PremiumHoverSurface
+// InkWell
+); // SizedBox
   }
 }
 
@@ -947,18 +991,36 @@ class _PathTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.path,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String path;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 250,
       height: 108,
-      child: PremiumHoverSurface(
+
+      child: InkWell(
+  
+onTap: () async {
+  if (Platform.isWindows) {
+    await Process.run('explorer', [path]);
+  }
+},
+
+  borderRadius: BorderRadius.circular(22),
+  child: PremiumHoverSurface(
+        
+        
+        
+        
+        
+        
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -987,7 +1049,8 @@ class _PathTile extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ), // InkWell
+); // SizedBox
   }
 }
 
