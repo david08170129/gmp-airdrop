@@ -766,10 +766,22 @@ class _EmbeddedUploadPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-      ),
+
+
      
+
+     appBar: AppBar(
+  title: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title),
+      const Text(
+        'Local Wi-Fi transfer',
+        style: TextStyle(fontSize: 12),
+      ),
+    ],
+  ),
+),
      
       
    body: WebViewWidget(
