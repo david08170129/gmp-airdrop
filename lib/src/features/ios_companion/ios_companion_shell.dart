@@ -68,7 +68,11 @@ Future<void> _startNearbyListener() async {
       }
 
       if (!_autoOpenedNearbyDevice) {
+        
   _autoOpenedNearbyDevice = true;
+
+  Future.delayed(const Duration(milliseconds: 500), () {
+  if (!mounted) return;
 
   Navigator.of(context).push(
     MaterialPageRoute(
@@ -78,6 +82,8 @@ Future<void> _startNearbyListener() async {
       ),
     ),
   );
+});
+
 }
 
 
