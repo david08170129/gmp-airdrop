@@ -20,6 +20,8 @@ class IosCompanionShell extends StatefulWidget {
 
 class _IosCompanionShellState extends State<IosCompanionShell> {
   int _index = 0;
+  bool _autoOpenedNearbyDevice = false;
+
 
 Future<void> _startNearbyListener() async {
   _listenerSocket ??=
@@ -64,6 +66,22 @@ Future<void> _startNearbyListener() async {
           _nearbyDevices.add(device);
         });
       }
+
+      if (!_autoOpenedNearbyDevice) {
+  _autoOpenedNearbyDevice = true;
+
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => _EmbeddedUploadPage(
+        url: device.url,
+        title: device.name,
+      ),
+    ),
+  );
+}
+
+
+
     } catch (_) {}
   });
 }
