@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:network_info_plus/network_info_plus.dart';
+
 
 import '../../core/file_name_safety.dart';
 import '../../core/file_count_summary.dart';
@@ -158,16 +158,18 @@ class WirelessReceiveService {
 
   _discoverySocket!.broadcastEnabled = true;
 
-  final info = NetworkInfo();
-  final wifiName = await info.getWifiName();
 
+  
+
+  final deviceName = Platform.localHostname;
+  
   _discoveryTimer?.cancel();
 
   _discoveryTimer = Timer.periodic(
     const Duration(seconds: 2),
     (_) {
       final payload = jsonEncode({
-        'name': wifiName ?? 'GMP AirDrop',
+        'name': deviceName,
       
 
 
