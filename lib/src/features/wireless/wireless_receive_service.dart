@@ -196,6 +196,16 @@ class WirelessReceiveService {
     final ipAddress = await _localIpAddress();
     final token = _makeToken();
     final availableBytes = await _receiverAvailableBytes();
+
+      await Directory(await _categoryRoot(TransferCategory.photos))
+    .create(recursive: true);
+
+await Directory(await _categoryRoot(TransferCategory.videos))
+    .create(recursive: true);
+
+await Directory(await _categoryRoot(TransferCategory.documents))
+    .create(recursive: true);
+
     final server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
     _server = server;
     _token = token;
@@ -448,18 +458,33 @@ class WirelessReceiveService {
 
     final userProfile = Platform.environment['USERPROFILE'] ?? '';
     return switch (category) {
-      TransferCategory.photos =>
-        p.join(userProfile, 'Pictures', 'GMP_Airdrop', 'Wireless', 'Photos'),
-      TransferCategory.videos =>
-        p.join(userProfile, 'Videos', 'GMP_Airdrop', 'Wireless', 'Videos'),
-      TransferCategory.documents ||
-      TransferCategory.code ||
-      TransferCategory.others =>
-        p.join(
-            userProfile, 'Documents', 'GMP_Airdrop', 'Wireless', 'Documents'),
+      
+      
+      
+     TransferCategory.photos =>
+  p.join(userProfile, 'Pictures', 'GMP_Airdrop', 'Wireless', 'Photos'),
+
+TransferCategory.videos =>
+  p.join(userProfile, 'Pictures', 'GMP_Airdrop', 'Wireless', 'Videos'),
+
+TransferCategory.documents ||
+TransferCategory.code ||
+TransferCategory.others =>
+  p.join(
+    userProfile,
+    'Pictures',
+    'GMP_Airdrop',
+    'Wireless',
+    'Documents',
+  ),
+  
+  
+  
     };
   }
 
+  
+  
   Future<int> _receiverAvailableBytes() async {
     if (Platform.isAndroid) {
       try {

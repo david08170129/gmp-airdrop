@@ -46,11 +46,8 @@ class _MobileExportScreenState extends State<MobileExportScreen> {
               label: l10n.selectPhotos,
               onTap: () => _pick(MediaKind.photos),
             ),
-            _ActionCard(
-              icon: Icons.video_library_rounded,
-              label: l10n.selectVideos,
-              onTap: () => _pick(MediaKind.videos),
-            ),
+            
+            
             _ActionCard(
               icon: Icons.folder_rounded,
               label: l10n.selectFiles,

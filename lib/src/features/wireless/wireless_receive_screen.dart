@@ -119,16 +119,15 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
                   if (Platform.isWindows)
                     _DropHintTile(active: _dragging, busy: _dropBusy),
                   _PathTile(
-                    icon: Icons.image_rounded,
-                    
-                    label: 'Photos',
+                    icon: Icons.folder_rounded,
+                    label: 'Received Files',
                     
 
                   onTap: () async {
   if (Platform.isWindows) {
     await Process.run(
       'explorer',
-      [r'Documents\GMP_Airdrop\Wireless\Photos'],
+      [Platform.environment['USERPROFILE']! + r'\Pictures\GMP_Airdrop'],
     );
   }
 },
@@ -136,47 +135,10 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
 
                     path: Platform.isAndroid
                         ? 'App storage/GMP_Airdrop/Wireless/Photos'
-                        : r'Documents\GMP_Airdrop\Wireless\Photos',
+                        : Platform.environment['USERPROFILE']! + r'\Pictures\GMP_Airdrop',
                   ),
-                  _PathTile(
-                    icon: Icons.movie_rounded,
-                    label: 'Videos',
-                    
-                    onTap: () async {
-  if (Platform.isWindows) {
-    await Process.run(
-      'explorer',
-      [r'Documents\GMP_Airdrop\Wireless\Videos'],
-    );
-  }
-},
-
-
-
-                    path: Platform.isAndroid
-                        ? 'App storage/GMP_Airdrop/Wireless/Videos'
-                        : r'Documents\GMP_Airdrop\Wireless\Videos',
-                  ),
-                  _PathTile(
-                    icon: Icons.description_rounded,
-                    label: 'Documents',
+             
                   
-
-onTap: () async {
-  if (Platform.isWindows) {
-    await Process.run(
-      'explorer',
-      [r'Documents\GMP_Airdrop\Wireless\Documents'],
-    );
-  }
-},
-
-
-
-                    path: Platform.isAndroid
-                        ? 'App storage/GMP_Airdrop/Wireless/Documents'
-                        : r'Documents\GMP_Airdrop\Wireless\Documents',
-                  ),
                   _StatusTile(running: running),
                 ],
               ),
@@ -1009,7 +971,8 @@ class _PathTile extends StatelessWidget {
   
 onTap: () async {
   if (Platform.isWindows) {
-    await Process.run('explorer', [path]);
+    await Directory(path).create(recursive: true);
+await Process.run('explorer', [path]);
   }
 },
 
