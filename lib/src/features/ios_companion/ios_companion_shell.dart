@@ -692,7 +692,16 @@ else
      
 
 child: ListTile(
-  onTap: () => launchUrl(Uri.parse(device.url)),
+  
+  onTap: () async {
+  await launchUrl(
+    Uri.parse(device.url),
+    mode: LaunchMode.externalApplication,
+  );
+},
+
+
+
   shape: RoundedRectangleBorder(
 
           borderRadius: BorderRadius.circular(16),
