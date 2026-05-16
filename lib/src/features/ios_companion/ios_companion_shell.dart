@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:webview_flutter/webview_flutter.dart';
+
 import '../../theme/gmp_colors.dart';
 import '../../widgets/gmp_logo.dart';
 
@@ -693,14 +695,18 @@ else
 
 child: ListTile(
   
-  onTap: () async {
-  await launchUrl(
-    Uri.parse(device.url),
-    mode: LaunchMode.externalApplication,
+  
+
+onTap: () {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => _EmbeddedUploadPage(
+        url: device.url,
+        title: device.name,
+      ),
+    ),
   );
 },
-
-
 
   shape: RoundedRectangleBorder(
 
@@ -746,4 +752,33 @@ class NearbyDevice {
   final int port;
   final String url;
 
+}
+
+class _EmbeddedUploadPage extends StatelessWidget {
+  const _EmbeddedUploadPage({
+    required this.url,
+    required this.title,
+  });
+
+  final String url;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+      ),
+     
+     
+      
+   body: WebViewWidget(
+  controller: WebViewController()
+    ..setJavaScriptMode(JavaScriptMode.unrestricted)
+    ..loadRequest(Uri.parse(url)),
+),
+   
+   
+    );
+  }
 }
