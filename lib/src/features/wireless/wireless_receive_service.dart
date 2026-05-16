@@ -760,7 +760,7 @@ TransferCategory.others =>
       </div>
       <form id="form">
         <div class="picker">
-          <input id="files" name="files" type="file" multiple>
+          <input id="files" name="files" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt">
         </div>
         <button id="send" type="submit">Send files</button>
       </form>
