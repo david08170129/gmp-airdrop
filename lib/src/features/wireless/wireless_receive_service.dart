@@ -168,8 +168,10 @@ class WirelessReceiveService {
     (_) {
       final payload = jsonEncode({
         'name': wifiName ?? 'GMP AirDrop',
-        'ip': ip,
-        'port': port,
+      
+
+
+        'url': 'http://$ip:$port/?t=$_token',
       });
 
       _discoverySocket!.send(

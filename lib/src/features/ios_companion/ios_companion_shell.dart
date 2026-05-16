@@ -39,12 +39,20 @@ Future<void> _startNearbyListener() async {
         utf8.decode(datagram.data),
       );
 
+      
+     
+      
+      final uri = Uri.parse(payload['url']);
+
       final device = NearbyDevice(
         name: payload['name'],
-        ip: payload['ip'],
-        port: payload['port'],
+        ip: uri.host,
+        port: uri.port,
+        url: payload['url'],
       );
 
+      
+      
       final exists = _nearbyDevices.any(
         (d) => d.ip == device.ip,
       );
@@ -710,15 +718,23 @@ child: ListTile(
 }
 
 class NearbyDevice {
+
+  
+
+
+  
   const NearbyDevice({
     required this.name,
     required this.ip,
     required this.port,
-  });
+    required this.url,
+ });
+
+
 
   final String name;
   final String ip;
   final int port;
+  final String url;
 
-  String get url => 'http://$ip:$port';
 }
