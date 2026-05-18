@@ -295,26 +295,38 @@ final class ShareViewController: UIViewController {
     }
 
     private func finish(openApp: Bool) {
-        if openApp {
-            openMainApp()
+        guard openApp else {
+            completeExtensionRequest()
+            return
         }
 
-        extensionContext?.completeRequest(returningItems: nil)
+        if openMainApp() {
+            completeExtensionRequest()
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self?.completeExtensionRequest()
+            }
+        }
     }
 
-    private func openMainApp() {
-        guard let importURL = importURL else { return }
+    private func openMainApp() -> Bool {
+        guard let importURL = importURL else { return false }
 
         var responder: UIResponder? = self
         let selector = NSSelectorFromString("openURL:")
 
         while let currentResponder = responder {
             if currentResponder.responds(to: selector) {
-                currentResponder.perform(selector, with: importURL)
-                return
+                return currentResponder.perform(selector, with: importURL) != nil
             }
 
             responder = currentResponder.next
         }
+
+        return false
+    }
+
+    private func completeExtensionRequest() {
+        extensionContext?.completeRequest(returningItems: nil)
     }
 }
