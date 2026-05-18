@@ -795,7 +795,7 @@ TransferCategory.others =>
       </div>
       <form id="form">
         <div class="picker">
-          <input id="files" name="files" type="file" multiple accept="image/*,video/*,video/mp4,video/quicktime,video/x-m4v,.mp4,.mov,.m4v,.avi,.mkv,.pdf,.doc,.docx,.txt">
+          <input id="files" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.bmp,.tif,.tiff,.mp4,.mov,.m4v,.avi,.mkv,video/mp4,video/quicktime,video/x-m4v,.pdf,.doc,.docx,.txt">
         </div>
         <button id="send" type="submit">Send files</button>
       </form>
