@@ -2,9 +2,12 @@ import UIKit
 
 final class ShareViewController: UIViewController {
     private let appGroupIdentifier = "group.com.aunew.gmpairdrop"
+    private let importURL = URL(string: "gmpairdrop://share-import")
     private let fileManager = FileManager.default
     private let metadataQueue = DispatchQueue(label: "com.aunew.gmpairdrop.shareextension.metadata")
+    private let finishQueue = DispatchQueue(label: "com.aunew.gmpairdrop.shareextension.finish")
     private var collectedItems: [[String: Any]] = []
+    private var didFinish = false
 
     private let supportedTypeIdentifiers = [
         "com.adobe.pdf",
@@ -43,7 +46,8 @@ final class ShareViewController: UIViewController {
     private func processSharedItems() {
         guard let extensionItems = extensionContext?.inputItems as? [NSExtensionItem],
               let sharedContainer = fileManager.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) else {
-            finish()
+            appendErrorMetadata(message: "Unable to access share input or App Group container.")
+            finish(openApp: false)
             return
         }
 
@@ -56,11 +60,17 @@ final class ShareViewController: UIViewController {
         do {
             try fileManager.createDirectory(at: shareDirectory, withIntermediateDirectories: true)
         } catch {
-            finish()
+            appendErrorMetadata(message: "Unable to create shared items directory: \(error.localizedDescription)")
+            writeMetadata(shareId: shareId, receivedAt: receivedAt, sharedContainer: sharedContainer)
+            finish(openApp: false)
             return
         }
 
         let group = DispatchGroup()
+
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 3) { [weak self] in
+            self?.finalizeShare(shareId: shareId, receivedAt: receivedAt, sharedContainer: sharedContainer)
+        }
 
         for extensionItem in extensionItems {
             for provider in extensionItem.attachments ?? [] {
@@ -68,18 +78,28 @@ final class ShareViewController: UIViewController {
                     group.enter()
                     provider.loadItem(forTypeIdentifier: typeIdentifier, options: nil) { [weak self] item, error in
                         defer { group.leave() }
-                        guard let self = self, error == nil, let item = item else { return }
+                        guard let self = self else { return }
+
+                        if let error = error {
+                            self.appendErrorMetadata(message: "Unable to load shared item: \(error.localizedDescription)", uti: typeIdentifier)
+                            return
+                        }
+
+                        guard let item = item else {
+                            self.appendErrorMetadata(message: "Shared item provider returned no item.", uti: typeIdentifier)
+                            return
+                        }
+
                         self.store(item: item, typeIdentifier: typeIdentifier, in: shareDirectory)
                     }
+                } else {
+                    appendErrorMetadata(message: "Unsupported shared item type.")
                 }
             }
         }
 
         group.notify(queue: .global(qos: .userInitiated)) { [weak self] in
-            self?.writeMetadata(shareId: shareId, receivedAt: receivedAt, sharedContainer: sharedContainer)
-            DispatchQueue.main.async {
-                self?.finish()
-            }
+            self?.finalizeShare(shareId: shareId, receivedAt: receivedAt, sharedContainer: sharedContainer)
         }
     }
 
@@ -105,6 +125,7 @@ final class ShareViewController: UIViewController {
                 try data.write(to: destination, options: .atomic)
                 appendFileMetadata(type: "image", uti: typeIdentifier, originalName: nil, destination: destination)
             } catch {
+                appendErrorMetadata(message: "Unable to save shared image: \(error.localizedDescription)", uti: typeIdentifier)
                 return
             }
             return
@@ -117,6 +138,7 @@ final class ShareViewController: UIViewController {
                 try data.write(to: destination, options: .atomic)
                 appendFileMetadata(type: itemType(for: typeIdentifier), uti: typeIdentifier, originalName: nil, destination: destination)
             } catch {
+                appendErrorMetadata(message: "Unable to save shared data: \(error.localizedDescription)", uti: typeIdentifier)
                 return
             }
         }
@@ -139,6 +161,7 @@ final class ShareViewController: UIViewController {
                 try fileManager.copyItem(at: url, to: destination)
                 appendFileMetadata(type: itemType(for: typeIdentifier, fileURL: url), uti: typeIdentifier, originalName: url.lastPathComponent, destination: destination)
             } catch {
+                appendErrorMetadata(message: "Unable to copy shared file: \(error.localizedDescription)", uti: typeIdentifier)
                 return
             }
         } else {
@@ -171,6 +194,27 @@ final class ShareViewController: UIViewController {
         }
     }
 
+    private func finalizeShare(shareId: String, receivedAt: String, sharedContainer: URL) {
+        guard markFinished() else { return }
+
+        writeMetadata(shareId: shareId, receivedAt: receivedAt, sharedContainer: sharedContainer)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.finish(openApp: true)
+        }
+    }
+
+    private func markFinished() -> Bool {
+        finishQueue.sync {
+            if didFinish {
+                return false
+            }
+
+            didFinish = true
+            return true
+        }
+    }
+
     private func appendFileMetadata(type: String, uti: String, originalName: String?, destination: URL) {
         var metadata: [String: Any] = [
             "type": type,
@@ -190,6 +234,19 @@ final class ShareViewController: UIViewController {
         metadataQueue.sync {
             collectedItems.append(metadata)
         }
+    }
+
+    private func appendErrorMetadata(message: String, uti: String? = nil) {
+        var metadata: [String: Any] = [
+            "type": "error",
+            "message": message
+        ]
+
+        if let uti = uti {
+            metadata["uti"] = uti
+        }
+
+        appendMetadata(metadata)
     }
 
     private func collectedMetadata() -> [[String: Any]] {
@@ -237,7 +294,27 @@ final class ShareViewController: UIViewController {
         return "file"
     }
 
-    private func finish() {
+    private func finish(openApp: Bool) {
+        if openApp {
+            openMainApp()
+        }
+
         extensionContext?.completeRequest(returningItems: nil)
+    }
+
+    private func openMainApp() {
+        guard let importURL = importURL else { return }
+
+        var responder: UIResponder? = self
+        let selector = NSSelectorFromString("openURL:")
+
+        while let currentResponder = responder {
+            if currentResponder.responds(to: selector) {
+                currentResponder.perform(selector, with: importURL)
+                return
+            }
+
+            responder = currentResponder.next
+        }
     }
 }
