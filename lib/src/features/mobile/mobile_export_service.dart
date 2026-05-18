@@ -2,8 +2,22 @@ import 'package:file_picker/file_picker.dart';
 
 enum MediaKind { photos, videos, files }
 
+class MobileExportPickResult {
+  const MobileExportPickResult({
+    required this.count,
+    required this.totalBytes,
+    this.tooLargeCount = 0,
+  });
+
+  final int count;
+  final int totalBytes;
+  final int tooLargeCount;
+}
+
 class MobileExportService {
-  Future<int> pickFiles(MediaKind kind) async {
+  static const maxVideoBytes = 10 * 1024 * 1024 * 1024;
+
+  Future<MobileExportPickResult> pickFiles(MediaKind kind) async {
     final type = switch (kind) {
       MediaKind.photos => FileType.image,
       MediaKind.videos => FileType.video,
@@ -13,9 +27,19 @@ class MobileExportService {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: type,
+      withData: false,
+      withReadStream: true,
     );
 
-    return result?.files.length ?? 0;
+    final files = result?.files ?? const <PlatformFile>[];
+    final tooLargeCount = kind == MediaKind.videos
+        ? files.where((file) => file.size > maxVideoBytes).length
+        : 0;
+    return MobileExportPickResult(
+      count: files.length,
+      totalBytes: files.fold<int>(0, (total, file) => total + file.size),
+      tooLargeCount: tooLargeCount,
+    );
   }
 
   Future<void> exportToUsb() async {

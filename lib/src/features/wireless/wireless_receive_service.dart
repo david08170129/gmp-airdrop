@@ -71,6 +71,19 @@ class WirelessReceiveService {
   static const _androidChannel = MethodChannel('gmp_airdrop/android_export');
   static const largeFileWarningBytes = 1024 * 1024 * 1024;
   static const maxUploadBytes = 10 * 1024 * 1024 * 1024;
+  static const supportedVideoMimeTypes = {
+    'video/mp4',
+    'video/quicktime',
+    'video/x-m4v',
+    'application/octet-stream',
+  };
+  static const supportedVideoExtensions = {
+    '.mp4',
+    '.mov',
+    '.m4v',
+    '.avi',
+    '.mkv',
+  };
 
   HttpServer? _server;
   RawDatagramSocket? _discoverySocket;
@@ -371,7 +384,10 @@ await Directory(await _categoryRoot(TransferCategory.documents))
       }
 
       final cleanName = FileNameSafety.cleanFileName(fileName);
-      final category = _categoryForExtension(p.extension(cleanName));
+      final category = _categoryForUpload(
+        cleanName,
+        part.headers[HttpHeaders.contentTypeHeader],
+      );
       final destination = await FileNameSafety.uniqueFile(File(p.join(
         await _categoryRoot(category),
         cleanName,
@@ -534,6 +550,24 @@ TransferCategory.others =>
     return TransferClassifier.categoryForFolder(folder);
   }
 
+  TransferCategory _categoryForUpload(String fileName, String? contentType) {
+    final extension = p.extension(fileName).toLowerCase();
+    if (supportedVideoExtensions.contains(extension)) {
+      return TransferCategory.videos;
+    }
+
+    final mimeType = contentType
+        ?.split(';')
+        .first
+        .trim()
+        .toLowerCase();
+    if (mimeType != null && supportedVideoMimeTypes.contains(mimeType)) {
+      return TransferCategory.videos;
+    }
+
+    return _categoryForExtension(extension);
+  }
+
   String? _fileNameFromDisposition(String disposition) {
     final encoded = RegExp("filename\\*=UTF-8''([^;]+)", caseSensitive: false)
         .firstMatch(disposition)
@@ -685,6 +719,7 @@ TransferCategory.others =>
   String _uploadPage(String token, int availableBytes) {
     final uploadUrl = '/upload?t=${Uri.encodeQueryComponent(token)}';
     const largeFileWarningBytes = WirelessReceiveService.largeFileWarningBytes;
+    const maxUploadBytes = WirelessReceiveService.maxUploadBytes;
     final targetLabel = Platform.isAndroid ? 'Android device' : 'Windows PC';
     final receiverHint = Platform.isAndroid
         ? 'leave GMP Airdrop open on the Android receiver'
@@ -760,7 +795,7 @@ TransferCategory.others =>
       </div>
       <form id="form">
         <div class="picker">
-          <input id="files" name="files" type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt">
+          <input id="files" name="files" type="file" multiple accept="image/*,video/*,video/mp4,video/quicktime,video/x-m4v,.mp4,.mov,.m4v,.avi,.mkv,.pdf,.doc,.docx,.txt">
         </div>
         <button id="send" type="submit">Send files</button>
       </form>
@@ -795,6 +830,10 @@ TransferCategory.others =>
         send.disabled = true;
         status.className = 'status warning';
         status.textContent = 'Transfer blocked. Required: ' + formatBytes(selectedTotal) + '. Receiver available: ' + formatBytes(receiverFreeBytes) + '.';
+      } else if (selectedTotal > $maxUploadBytes) {
+        send.disabled = true;
+        status.className = 'status warning';
+        status.textContent = 'Transfer blocked. This upload is over 10 GB. Send fewer files at once or move very large videos by USB.';
       } else if (hasLargeFile || selectedTotal >= $largeFileWarningBytes) {
         send.disabled = false;
         status.className = 'status warning';
@@ -814,6 +853,11 @@ TransferCategory.others =>
       if (receiverFreeBytes >= 0 && selectedTotal > receiverFreeBytes) {
         status.className = 'status warning';
         status.textContent = 'Transfer blocked. Required: ' + formatBytes(selectedTotal) + '. Receiver available: ' + formatBytes(receiverFreeBytes) + '.';
+        return;
+      }
+      if (selectedTotal > $maxUploadBytes) {
+        status.className = 'status warning';
+        status.textContent = 'Transfer blocked. This upload is over 10 GB. Send fewer files at once or move very large videos by USB.';
         return;
       }
       const data = new FormData();

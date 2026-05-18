@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/gmp_folder_structure.dart';
 import '../../l10n/app_localizations.dart';
@@ -46,8 +47,11 @@ class _MobileExportScreenState extends State<MobileExportScreen> {
               label: l10n.selectPhotos,
               onTap: () => _pick(MediaKind.photos),
             ),
-            
-            
+            _ActionCard(
+              icon: Icons.video_library_rounded,
+              label: l10n.selectVideos,
+              onTap: () => _pick(MediaKind.videos),
+            ),
             _ActionCard(
               icon: Icons.folder_rounded,
               label: l10n.selectFiles,
@@ -120,8 +124,31 @@ class _MobileExportScreenState extends State<MobileExportScreen> {
   }
 
   Future<void> _pick(MediaKind kind) async {
-    final count = await _service.pickFiles(kind);
-    setState(() => _selectedCount += count);
+    try {
+      final result = await _service.pickFiles(kind);
+      if (!mounted) return;
+      setState(() => _selectedCount += result.count);
+
+      if (kind == MediaKind.videos && result.tooLargeCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${result.tooLargeCount} video(s) are over 10 GB and may be too large for safe wireless transfer. Choose a smaller video or move it by USB.',
+            ),
+          ),
+        );
+      }
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Could not select videos.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not select files: $error')),
+      );
+    }
   }
 
   Future<void> _export() async {
