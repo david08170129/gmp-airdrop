@@ -766,6 +766,8 @@ TransferCategory.others =>
     .badge { display: inline-flex; padding: 8px 12px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-weight: 800; font-size: 14px; }
     .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 20px; box-shadow: 0 18px 48px var(--shadow); }
     .picker { border: 1.5px dashed var(--line); border-radius: 18px; padding: 18px; margin: 2px 0 16px; background: color-mix(in srgb, var(--blue-soft) 38%, transparent); }
+    .picker + .picker { margin-top: 12px; }
+    .picker label { display: block; font-weight: 800; margin-bottom: 8px; }
     input[type=file] { width: 100%; font-size: 16px; color: var(--muted); }
     button { width: 100%; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-weight: 800; font-size: 17px; padding: 16px 18px; box-shadow: 0 12px 24px rgba(21,95,214,.2); transition: transform .18s ease, opacity .18s ease; }
     button:active { transform: scale(.99); }
@@ -794,8 +796,14 @@ TransferCategory.others =>
         <div><span>Receiver available</span><b>$availableLabel</b></div>
       </div>
       <form id="form">
+        <!-- Do not use image/*, video/*, or capture in iOS WebView because it shows "Take Photo or Video" and crashes on some devices. -->
         <div class="picker">
-          <input id="files" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.bmp,.tif,.tiff,.mp4,.mov,.m4v,.avi,.mkv,.pdf,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
+          <label for="photoFiles">Photo Library</label>
+          <input id="photoFiles" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.bmp,.tif,.tiff">
+        </div>
+        <div class="picker">
+          <label for="documentFiles">Choose Files</label>
+          <input id="documentFiles" name="files" type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif,.bmp,.tif,.tiff,.mp4,.mov,.m4v,.avi,.mkv,.pdf,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt">
         </div>
         <button id="send" type="submit">Send files</button>
       </form>
@@ -806,7 +814,9 @@ TransferCategory.others =>
   </main>
   <script>
     const form = document.getElementById('form');
-    const input = document.getElementById('files');
+    const photoInput = document.getElementById('photoFiles');
+    const documentInput = document.getElementById('documentFiles');
+    const inputs = [photoInput, documentInput];
     const send = document.getElementById('send');
     const progress = document.getElementById('progress');
     const status = document.getElementById('status');
@@ -814,11 +824,16 @@ TransferCategory.others =>
     const required = document.getElementById('required');
     const receiverFreeBytes = $availableBytes;
     let selectedTotal = 0;
-    input.addEventListener('change', () => {
+    inputs.forEach((input) => input.addEventListener('change', updateSelection));
+    function selectedFiles() {
+      return inputs.flatMap((input) => Array.from(input.files || []));
+    }
+    function updateSelection() {
       list.innerHTML = '';
       selectedTotal = 0;
       let hasLargeFile = false;
-      for (const file of input.files) {
+      const files = selectedFiles();
+      for (const file of files) {
         selectedTotal += file.size;
         if (file.size >= $largeFileWarningBytes) hasLargeFile = true;
         const item = document.createElement('li');
@@ -841,12 +856,13 @@ TransferCategory.others =>
       } else {
         send.disabled = false;
         status.className = 'status';
-        status.textContent = input.files.length ? input.files.length + ' file(s) ready.' : '';
+        status.textContent = files.length ? files.length + ' file(s) ready.' : '';
       }
-    });
+    }
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      if (!input.files.length) {
+      const files = selectedFiles();
+      if (!files.length) {
         status.textContent = 'Choose files first.';
         return;
       }
@@ -861,7 +877,7 @@ TransferCategory.others =>
         return;
       }
       const data = new FormData();
-      for (const file of input.files) data.append('files', file, file.name);
+      for (const file of files) data.append('files', file, file.name);
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '$uploadUrl');
       xhr.upload.onprogress = (event) => {
@@ -876,9 +892,10 @@ TransferCategory.others =>
         if (xhr.status >= 200 && xhr.status < 300) {
           progress.value = 100;
           status.className = 'status done';
-          const count = payload.received || input.files.length;
+          const count = payload.received || files.length;
           status.textContent = count + ' file(s) uploaded to the $targetLabel.';
           form.reset();
+          updateSelection();
         } else {
           status.className = 'status warning';
           status.textContent = payload.message || 'Upload failed. Check the receiver is still open and both devices are on the same Wi-Fi.';
