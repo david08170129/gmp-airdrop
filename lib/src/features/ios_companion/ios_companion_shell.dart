@@ -10,6 +10,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../theme/gmp_colors.dart';
 import '../../widgets/gmp_logo.dart';
+import 'ios_native_picker_service.dart';
+import 'ios_wireless_upload_service.dart';
 
 class IosCompanionShell extends StatefulWidget {
   const IosCompanionShell({super.key});
@@ -22,79 +24,67 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
   int _index = 0;
   bool _autoOpenedNearbyDevice = false;
 
+  Future<void> _startNearbyListener() async {
+    _listenerSocket ??= await RawDatagramSocket.bind(
+      InternetAddress.anyIPv4,
+      45454,
+      reuseAddress: true,
+      reusePort: true,
+    );
 
-Future<void> _startNearbyListener() async {
-  _listenerSocket ??=
-      await RawDatagramSocket.bind(
-    InternetAddress.anyIPv4,
-    45454,
-    reuseAddress: true,
-    reusePort: true,
-  );
+    _listenerSocket!.listen((event) {
+      if (event != RawSocketEvent.read) return;
 
-  _listenerSocket!.listen((event) {
-    if (event != RawSocketEvent.read) return;
+      final datagram = _listenerSocket!.receive();
+      if (datagram == null) return;
 
-    final datagram = _listenerSocket!.receive();
-    if (datagram == null) return;
+      try {
+        final payload = jsonDecode(
+          utf8.decode(datagram.data),
+        );
 
-    try {
-      final payload = jsonDecode(
-        utf8.decode(datagram.data),
-      );
+        final uri = Uri.parse(payload['url']);
 
-      
-     
-      
-      final uri = Uri.parse(payload['url']);
+        final device = NearbyDevice(
+          name: payload['name'],
+          ip: uri.host,
+          port: uri.port,
+          url: payload['url'],
+        );
 
-      final device = NearbyDevice(
-        name: payload['name'],
-        ip: uri.host,
-        port: uri.port,
-        url: payload['url'],
-      );
+        final exists = _nearbyDevices.any(
+          (d) => d.ip == device.ip,
+        );
 
-      
-      
-      final exists = _nearbyDevices.any(
-        (d) => d.ip == device.ip,
-      );
+        if (!exists) {
+          setState(() {
+            _nearbyDevices.add(device);
+          });
+        }
 
-      if (!exists) {
-        setState(() {
-          _nearbyDevices.add(device);
-        });
-      }
+        if (!_autoOpenedNearbyDevice) {
+          _autoOpenedNearbyDevice = true;
 
-      if (!_autoOpenedNearbyDevice) {
-        
-  _autoOpenedNearbyDevice = true;
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (!mounted) return;
 
-  Future.delayed(const Duration(milliseconds: 500), () {
-  if (!mounted) return;
-
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => _EmbeddedUploadPage(
-        url: device.url,
-        title: device.name,
-      ),
-    ),
-  );
-});
-
-}
-
-
-
-    } catch (_) {}
-  });
-}
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => _EmbeddedUploadPage(
+                  url: device.url,
+                  title: device.name,
+                ),
+              ),
+            );
+          });
+        }
+      } catch (_) {}
+    });
+  }
 
   RawDatagramSocket? _listenerSocket;
 
-final List<NearbyDevice> _nearbyDevices = [];
+  final List<NearbyDevice> _nearbyDevices = [];
 
   final _history = const [
     IosTransferHistoryItem(
@@ -104,22 +94,19 @@ final List<NearbyDevice> _nearbyDevices = [];
     ),
   ];
 
-@override
-void initState() {
-  super.initState();
-  _startNearbyListener();
-}
-
+  @override
+  void initState() {
+    super.initState();
+    _startNearbyListener();
+  }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      
-_OnboardingPage(
-  onScanPressed: () => setState(() => _index = 1),
-  devices: _nearbyDevices,
-),
-
+      _OnboardingPage(
+        onScanPressed: () => setState(() => _index = 1),
+        devices: _nearbyDevices,
+      ),
       const _QrScannerPage(),
       const _UploadWebPage(),
       const _SharedFilesPage(),
@@ -217,14 +204,11 @@ class _IosPage extends StatelessWidget {
   }
 }
 
-
-
 class _OnboardingPage extends StatelessWidget {
   const _OnboardingPage({
     required this.onScanPressed,
     required this.devices,
   });
-
 
   final VoidCallback onScanPressed;
   final List<NearbyDevice> devices;
@@ -246,23 +230,16 @@ class _OnboardingPage extends StatelessWidget {
         const _StepCard(
           icon: Icons.public_rounded,
           title: 'Open the upload page',
-          body: 'Launch Safari handoff or embedded upload view for local Wi-Fi transfers.',
+          body:
+              'Launch Safari handoff or embedded upload view for local Wi-Fi transfers.',
         ),
-        
-
-const _StepCard(
-  icon: Icons.ios_share_rounded,
-  title: 'Share into GMP Airdrop',
-  body: 'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
-),
-
-
-
-
-
-
-_NearbyDevicesCard(devices: devices),
-
+        const _StepCard(
+          icon: Icons.ios_share_rounded,
+          title: 'Share into GMP Airdrop',
+          body:
+              'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
+        ),
+        _NearbyDevicesCard(devices: devices),
       ],
     );
   }
@@ -353,14 +330,13 @@ class _ScannerPlaceholder extends StatelessWidget {
                 final List<Barcode> barcodes = capture.barcodes;
 
                 for (final barcode in barcodes) {
-                 
-                final raw = barcode.rawValue;
+                  final raw = barcode.rawValue;
 
-if (raw != null) {
-  final uri = Uri.parse(raw);
+                  if (raw != null) {
+                    final uri = Uri.parse(raw);
 
-  launchUrl(uri);
-} 
+                    launchUrl(uri);
+                  }
                 }
               },
             ),
@@ -659,8 +635,6 @@ class IosTransferHistoryItem {
   final String status;
 }
 
-
-
 class _NearbyDevicesCard extends StatelessWidget {
   const _NearbyDevicesCard({
     required this.devices,
@@ -699,57 +673,40 @@ class _NearbyDevicesCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          
-          
-          
-         
-        
-        if (devices.isEmpty)
-  const Text(
-    'Searching local Wi-Fi for GMP AirDrop receivers...',
-    style: TextStyle(color: GmpColors.muted),
-  )
-else
-  ...devices.map(
-    (device) => Padding(
-      padding: const EdgeInsets.only(top: 10),
-
-
-     
-
-child: ListTile(
-  
-  
-
-onTap: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => _EmbeddedUploadPage(
-        url: device.url,
-        title: device.name,
-      ),
-    ),
-  );
-},
-
-  shape: RoundedRectangleBorder(
-
-          borderRadius: BorderRadius.circular(16),
-        ),
-        tileColor: GmpColors.blue.withValues(alpha: 0.06),
-        leading: Icon(
-          Icons.desktop_windows_rounded,
-          color: GmpColors.blue,
-        ),
-        title: Text(device.name),
-        subtitle: Text(device.ip),
-        trailing: const Icon(Icons.chevron_right_rounded),
-      ),
-    ),
-  ),
-        
-        
-        
+          if (devices.isEmpty)
+            const Text(
+              'Searching local Wi-Fi for GMP AirDrop receivers...',
+              style: TextStyle(color: GmpColors.muted),
+            )
+          else
+            ...devices.map(
+              (device) => Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: ListTile(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => _EmbeddedUploadPage(
+                          url: device.url,
+                          title: device.name,
+                        ),
+                      ),
+                    );
+                  },
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  tileColor: GmpColors.blue.withValues(alpha: 0.06),
+                  leading: Icon(
+                    Icons.desktop_windows_rounded,
+                    color: GmpColors.blue,
+                  ),
+                  title: Text(device.name),
+                  subtitle: Text(device.ip),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -757,28 +714,20 @@ onTap: () {
 }
 
 class NearbyDevice {
-
-  
-
-
-  
   const NearbyDevice({
     required this.name,
     required this.ip,
     required this.port,
     required this.url,
- });
-
-
+  });
 
   final String name;
   final String ip;
   final int port;
   final String url;
-
 }
 
-class _EmbeddedUploadPage extends StatelessWidget {
+class _EmbeddedUploadPage extends StatefulWidget {
   const _EmbeddedUploadPage({
     required this.url,
     required this.title,
@@ -788,33 +737,273 @@ class _EmbeddedUploadPage extends StatelessWidget {
   final String title;
 
   @override
+  State<_EmbeddedUploadPage> createState() => _EmbeddedUploadPageState();
+}
+
+class _EmbeddedUploadPageState extends State<_EmbeddedUploadPage> {
+  final _picker = IosNativePickerService();
+  final _uploader = IosWirelessUploadService();
+  final List<IosPickedFile> _selectedFiles = [];
+
+  bool _picking = false;
+  bool _uploading = false;
+  double _progress = 0;
+  String? _status;
+
+  @override
   Widget build(BuildContext context) {
+    if (!Platform.isIOS) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.title),
+              const Text(
+                'Local Wi-Fi transfer',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        body: WebViewWidget(
+          controller: WebViewController()
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..loadRequest(Uri.parse(widget.url)),
+        ),
+      );
+    }
+
     return Scaffold(
-
-
-     
-
-     appBar: AppBar(
-  title: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(title),
-      const Text(
-        'Local Wi-Fi transfer',
-        style: TextStyle(fontSize: 12),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.title),
+            const Text(
+              'Local Wi-Fi transfer',
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
       ),
-    ],
-  ),
-),
-     
-      
-   body: WebViewWidget(
-  controller: WebViewController()
-    ..setJavaScriptMode(JavaScriptMode.unrestricted)
-    ..loadRequest(Uri.parse(url)),
-),
-   
-   
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 34),
+        children: [
+          Text(
+            'Send to GMP Airdrop',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: GmpColors.text,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Choose existing photos, videos, or files. Camera capture is not used.',
+            style: TextStyle(color: GmpColors.muted, height: 1.45),
+          ),
+          const SizedBox(height: 18),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _NativePickButton(
+                icon: Icons.photo_library_rounded,
+                label: 'Photo Library',
+                enabled: !_picking && !_uploading,
+                onPressed: () => _pick(IosPickerKind.photos),
+              ),
+              _NativePickButton(
+                icon: Icons.video_library_rounded,
+                label: 'Videos',
+                enabled: !_picking && !_uploading,
+                onPressed: () => _pick(IosPickerKind.videos),
+              ),
+              _NativePickButton(
+                icon: Icons.folder_rounded,
+                label: 'Choose Files',
+                enabled: !_picking && !_uploading,
+                onPressed: () => _pick(IosPickerKind.files),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.upload_file_rounded,
+                        color: GmpColors.blue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '${_selectedFiles.length} file(s) selected',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                      ),
+                    ),
+                    if (_selectedFiles.isNotEmpty && !_uploading)
+                      IconButton(
+                        tooltip: 'Clear selection',
+                        onPressed: () => setState(_selectedFiles.clear),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (_selectedFiles.isEmpty)
+                  const Text(
+                    'No files selected yet.',
+                    style: TextStyle(color: GmpColors.muted),
+                  )
+                else
+                  ..._selectedFiles.map(
+                    (file) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.insert_drive_file_rounded),
+                      title: Text(
+                        file.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(_formatBytes(file.sizeBytes)),
+                    ),
+                  ),
+                if (_uploading) ...[
+                  const SizedBox(height: 12),
+                  LinearProgressIndicator(value: _progress.clamp(0, 1)),
+                ],
+                if (_status != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _status!,
+                    style: const TextStyle(
+                      color: GmpColors.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _selectedFiles.isEmpty || _uploading
+                      ? null
+                      : _uploadSelectedFiles,
+                  icon: _uploading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(_uploading ? 'Sending...' : 'Send files'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pick(IosPickerKind kind) async {
+    setState(() {
+      _picking = true;
+      _status = null;
+    });
+
+    try {
+      final files = await _picker.pick(kind);
+      if (!mounted) return;
+      setState(() {
+        _selectedFiles.addAll(files);
+        if (files.isEmpty) {
+          _status = 'No files selected.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _status = 'Could not select files: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _picking = false);
+      }
+    }
+  }
+
+  Future<void> _uploadSelectedFiles() async {
+    setState(() {
+      _uploading = true;
+      _progress = 0;
+      _status = 'Starting upload...';
+    });
+
+    try {
+      final count = await _uploader.upload(
+        receiverUrl: Uri.parse(widget.url),
+        files: List<IosPickedFile>.of(_selectedFiles),
+        onProgress: (progress) {
+          if (!mounted) return;
+          setState(() {
+            _progress = progress.value;
+            _status = 'Uploading ${(_progress * 100).toStringAsFixed(0)}%';
+          });
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedFiles.clear();
+        _progress = 1;
+        _status = '$count file(s) uploaded to ${widget.title}.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _status = 'Upload failed: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _uploading = false);
+      }
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var size = bytes.toDouble();
+    var unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    final decimals = unitIndex == 0 || size >= 10 ? 0 : 1;
+    return '${size.toStringAsFixed(decimals)} ${units[unitIndex]}';
+  }
+}
+
+class _NativePickButton extends StatelessWidget {
+  const _NativePickButton({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 168,
+      child: FilledButton.tonalIcon(
+        onPressed: enabled ? onPressed : null,
+        icon: Icon(icon),
+        label: Text(label),
+      ),
     );
   }
 }
