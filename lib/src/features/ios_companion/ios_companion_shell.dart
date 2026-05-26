@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -22,19 +22,45 @@ class IosCompanionShell extends StatefulWidget {
   State<IosCompanionShell> createState() => _IosCompanionShellState();
 }
 
-class _IosCompanionShellState extends State<IosCompanionShell> {
+class _IosCompanionShellState extends State<IosCompanionShell>
+    with WidgetsBindingObserver {
+  static const _nearbyDiscoveryPort = 45454;
+  static const _nearbyDiscoveryRefreshInterval = Duration(seconds: 3);
+  static const _nearbyDiscoveryStaleAfter = Duration(seconds: 12);
+
   int _index = 0;
   bool _autoOpenedNearbyDevice = false;
+  bool _nearbySearching = false;
+  String _nearbyStatus =
+      'Make sure Windows receiver is running and both devices are on the same Wi-Fi.';
 
   Future<void> _startNearbyListener() async {
-    _listenerSocket ??= await RawDatagramSocket.bind(
-      InternetAddress.anyIPv4,
-      45454,
-      reuseAddress: true,
-      reusePort: true,
-    );
+    if (_listenerSocket != null) return;
 
-    _listenerSocket!.listen((event) {
+    setState(() {
+      _nearbySearching = true;
+      _nearbyStatus = 'Searching local Wi-Fi for GMP AirDrop receivers...';
+    });
+
+    try {
+      _listenerSocket = await RawDatagramSocket.bind(
+        InternetAddress.anyIPv4,
+        _nearbyDiscoveryPort,
+        reuseAddress: true,
+        reusePort: true,
+      );
+      _listenerSocket!.broadcastEnabled = true;
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _nearbySearching = false;
+        _nearbyStatus =
+            'Could not start nearby search. Make sure Windows receiver is running and both devices are on the same Wi-Fi.';
+      });
+      return;
+    }
+
+    _listenerSubscription = _listenerSocket!.listen((event) {
       if (event != RawSocketEvent.read) return;
 
       final datagram = _listenerSocket!.receive();
@@ -45,26 +71,39 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
           utf8.decode(datagram.data),
         );
 
-        final uri = Uri.parse(payload['url']);
+        final url = payload['url']?.toString();
+        if (url == null || url.isEmpty) return;
+
+        final uri = Uri.parse(url);
+        if (!uri.hasScheme || uri.host.isEmpty) return;
 
         final device = NearbyDevice(
-          name: payload['name'],
+          name: payload['name']?.toString().isNotEmpty == true
+              ? payload['name'].toString()
+              : 'Windows PC',
           ip: uri.host,
           port: uri.port,
-          url: payload['url'],
+          url: url,
+          lastSeen: DateTime.now(),
         );
 
-        final exists = _nearbyDevices.any(
-          (d) => d.ip == device.ip,
+        final existingIndex = _nearbyDevices.indexWhere(
+          (d) => d.ip == device.ip && d.port == device.port,
         );
 
-        if (!exists) {
+        if (mounted) {
           setState(() {
-            _nearbyDevices.add(device);
+            if (existingIndex == -1) {
+              _nearbyDevices.add(device);
+            } else {
+              _nearbyDevices[existingIndex] = device;
+            }
+            _nearbySearching = false;
+            _nearbyStatus = '${_nearbyDevices.length} receiver(s) found.';
           });
         }
 
-        if (!_autoOpenedNearbyDevice) {
+        if (!_autoOpenedNearbyDevice && _index == 0) {
           _autoOpenedNearbyDevice = true;
 
           Future.delayed(const Duration(milliseconds: 500), () {
@@ -82,9 +121,17 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
         }
       } catch (_) {}
     });
+
+    _nearbyRefreshTimer?.cancel();
+    _nearbyRefreshTimer = Timer.periodic(
+      _nearbyDiscoveryRefreshInterval,
+      (_) => _refreshNearbyDiscovery(silent: true),
+    );
   }
 
   RawDatagramSocket? _listenerSocket;
+  StreamSubscription<RawSocketEvent>? _listenerSubscription;
+  Timer? _nearbyRefreshTimer;
 
   final List<NearbyDevice> _nearbyDevices = [];
 
@@ -99,19 +146,101 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
   @override
   void initState() {
     super.initState();
-    _startNearbyListener();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_startNearbyListener());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _nearbyRefreshTimer?.cancel();
+    _listenerSubscription?.cancel();
+    _listenerSocket?.close();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshNearbyDiscovery());
+    }
+  }
+
+  void _goTo(int index) {
+    setState(() => _index = index);
+    if (index == 0 || index == 2 || index == 3) {
+      unawaited(_refreshNearbyDiscovery(silent: true));
+    }
+  }
+
+  Future<void> _refreshNearbyDiscovery({bool silent = false}) async {
+    _removeStaleNearbyDevices();
+    if (_listenerSocket == null) {
+      await _startNearbyListener();
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _nearbySearching = true;
+      if (!silent) {
+        _nearbyStatus = _nearbyDevices.isEmpty
+            ? 'Searching local Wi-Fi for GMP AirDrop receivers...'
+            : '${_nearbyDevices.length} receiver(s) found. Searching again...';
+      } else if (_nearbyDevices.isEmpty) {
+        _nearbyStatus =
+            'Make sure Windows receiver is running and both devices are on the same Wi-Fi.';
+      }
+    });
+
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      setState(() {
+        _nearbySearching = false;
+        if (_nearbyDevices.isEmpty) {
+          _nearbyStatus =
+              'Make sure Windows receiver is running and both devices are on the same Wi-Fi.';
+        } else {
+          _nearbyStatus = '${_nearbyDevices.length} receiver(s) found.';
+        }
+      });
+    });
+  }
+
+  void _removeStaleNearbyDevices() {
+    final now = DateTime.now();
+    final before = _nearbyDevices.length;
+    _nearbyDevices.removeWhere(
+      (device) => now.difference(device.lastSeen) > _nearbyDiscoveryStaleAfter,
+    );
+    if (mounted && before != _nearbyDevices.length) {
+      setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
       _OnboardingPage(
-        onScanPressed: () => setState(() => _index = 1),
+        onScanPressed: () => _goTo(1),
         devices: _nearbyDevices,
+        nearbyStatus: _nearbyStatus,
+        nearbySearching: _nearbySearching,
+        onRefreshNearby: _refreshNearbyDiscovery,
       ),
       const _QrScannerPage(),
-      const _UploadWebPage(),
-      const _SharedFilesPage(),
+      _UploadWebPage(
+        devices: _nearbyDevices,
+        nearbyStatus: _nearbyStatus,
+        nearbySearching: _nearbySearching,
+        onRefreshNearby: _refreshNearbyDiscovery,
+      ),
+      _SharedFilesPage(
+        devices: _nearbyDevices,
+        nearbyStatus: _nearbyStatus,
+        nearbySearching: _nearbySearching,
+        onRefreshNearby: _refreshNearbyDiscovery,
+      ),
       _TransferHistoryPage(items: _history),
     ];
 
@@ -124,7 +253,7 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.tonalIcon(
-              onPressed: () => setState(() => _index = 1),
+              onPressed: () => _goTo(1),
               icon: const Icon(Icons.qr_code_scanner_rounded),
               label: const Text('Scan'),
             ),
@@ -139,7 +268,7 @@ class _IosCompanionShellState extends State<IosCompanionShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
+        onDestinationSelected: _goTo,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_rounded),
@@ -210,10 +339,16 @@ class _OnboardingPage extends StatelessWidget {
   const _OnboardingPage({
     required this.onScanPressed,
     required this.devices,
+    required this.nearbyStatus,
+    required this.nearbySearching,
+    required this.onRefreshNearby,
   });
 
   final VoidCallback onScanPressed;
   final List<NearbyDevice> devices;
+  final String nearbyStatus;
+  final bool nearbySearching;
+  final Future<void> Function() onRefreshNearby;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +376,12 @@ class _OnboardingPage extends StatelessWidget {
           body:
               'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
         ),
-        _NearbyDevicesCard(devices: devices),
+        _NearbyDevicesCard(
+          devices: devices,
+          status: nearbyStatus,
+          searching: nearbySearching,
+          onRefresh: onRefreshNearby,
+        ),
       ],
     );
   }
@@ -360,7 +500,17 @@ class _ScannerPlaceholder extends StatelessWidget {
 }
 
 class _UploadWebPage extends StatelessWidget {
-  const _UploadWebPage();
+  const _UploadWebPage({
+    required this.devices,
+    required this.nearbyStatus,
+    required this.nearbySearching,
+    required this.onRefreshNearby,
+  });
+
+  final List<NearbyDevice> devices;
+  final String nearbyStatus;
+  final bool nearbySearching;
+  final Future<void> Function() onRefreshNearby;
 
   @override
   Widget build(BuildContext context) {
@@ -368,10 +518,15 @@ class _UploadWebPage extends StatelessWidget {
       title: 'Upload page bridge.',
       subtitle:
           'Structure for opening the existing GMP Airdrop browser upload page in WKWebView or Safari.',
-      children: const [
-        _UploadUrlCard(),
-        SizedBox(height: 16),
-        _ImplementationNote(
+      children: [
+        _UploadUrlCard(
+          devices: devices,
+          nearbyStatus: nearbyStatus,
+          nearbySearching: nearbySearching,
+          onRefreshNearby: onRefreshNearby,
+        ),
+        const SizedBox(height: 16),
+        const _ImplementationNote(
           title: 'No new transfer protocol',
           body:
               'The companion app reuses the current QR upload URL and mobile browser upload flow.',
@@ -382,7 +537,17 @@ class _UploadWebPage extends StatelessWidget {
 }
 
 class _UploadUrlCard extends StatelessWidget {
-  const _UploadUrlCard();
+  const _UploadUrlCard({
+    required this.devices,
+    required this.nearbyStatus,
+    required this.nearbySearching,
+    required this.onRefreshNearby,
+  });
+
+  final List<NearbyDevice> devices;
+  final String nearbyStatus;
+  final bool nearbySearching;
+  final Future<void> Function() onRefreshNearby;
 
   @override
   Widget build(BuildContext context) {
@@ -399,22 +564,47 @@ class _UploadUrlCard extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Example: http://192.168.1.24:8080/upload',
+          Text(
+            nearbyStatus,
             style: TextStyle(color: GmpColors.muted),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: null,
-                  icon: const Icon(Icons.open_in_browser_rounded),
-                  label: const Text('Open in Safari'),
+          if (devices.isEmpty)
+            FilledButton.tonalIcon(
+              onPressed: nearbySearching ? null : onRefreshNearby,
+              icon: nearbySearching
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.search_rounded),
+              label: const Text('Search for PC'),
+            )
+          else
+            ...devices.map(
+              (device) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => _EmbeddedUploadPage(
+                          url: device.url,
+                          title: device.name,
+                        ),
+                      ),
+                    );
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.desktop_windows_rounded,
+                      color: GmpColors.blue),
+                  title: Text(device.name),
+                  subtitle: Text(device.ip),
+                  trailing: const Icon(Icons.chevron_right_rounded),
                 ),
               ),
-            ],
-          ),
+            ),
         ],
       ),
     );
@@ -422,7 +612,17 @@ class _UploadUrlCard extends StatelessWidget {
 }
 
 class _SharedFilesPage extends StatefulWidget {
-  const _SharedFilesPage();
+  const _SharedFilesPage({
+    required this.devices,
+    required this.nearbyStatus,
+    required this.nearbySearching,
+    required this.onRefreshNearby,
+  });
+
+  final List<NearbyDevice> devices;
+  final String nearbyStatus;
+  final bool nearbySearching;
+  final Future<void> Function() onRefreshNearby;
 
   @override
   State<_SharedFilesPage> createState() => _SharedFilesPageState();
@@ -527,6 +727,13 @@ class _SharedFilesPageState extends State<_SharedFilesPage>
             _SharedBatchCard(batch: batch),
             const SizedBox(height: 12),
           ],
+        const SizedBox(height: 16),
+        _NearbyDevicesCard(
+          devices: widget.devices,
+          status: widget.nearbyStatus,
+          searching: widget.nearbySearching,
+          onRefresh: widget.onRefreshNearby,
+        ),
       ],
     );
   }
@@ -890,9 +1097,15 @@ class IosTransferHistoryItem {
 class _NearbyDevicesCard extends StatelessWidget {
   const _NearbyDevicesCard({
     required this.devices,
+    required this.status,
+    required this.searching,
+    required this.onRefresh,
   });
 
   final List<NearbyDevice> devices;
+  final String status;
+  final bool searching;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -922,42 +1135,61 @@ class _NearbyDevicesCard extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Search for PC',
+                onPressed: searching ? null : onRefresh,
+                icon: searching
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
+              ),
             ],
           ),
           const SizedBox(height: 14),
           if (devices.isEmpty)
-            const Text(
-              'Searching local Wi-Fi for GMP AirDrop receivers...',
+            Text(
+              status,
               style: TextStyle(color: GmpColors.muted),
             )
           else
-            ...devices.map(
-              (device) => Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: ListTile(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => _EmbeddedUploadPage(
-                          url: device.url,
-                          title: device.name,
-                        ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(status, style: const TextStyle(color: GmpColors.muted)),
+                const SizedBox(height: 4),
+                ...devices.map(
+                  (device) => Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: ListTile(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => _EmbeddedUploadPage(
+                              url: device.url,
+                              title: device.name,
+                            ),
+                          ),
+                        );
+                      },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    );
-                  },
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                      tileColor: GmpColors.blue.withValues(alpha: 0.06),
+                      leading: Icon(
+                        Icons.desktop_windows_rounded,
+                        color: GmpColors.blue,
+                      ),
+                      title: Text(device.name),
+                      subtitle: Text('${device.ip}:${device.port}'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                    ),
                   ),
-                  tileColor: GmpColors.blue.withValues(alpha: 0.06),
-                  leading: Icon(
-                    Icons.desktop_windows_rounded,
-                    color: GmpColors.blue,
-                  ),
-                  title: Text(device.name),
-                  subtitle: Text(device.ip),
-                  trailing: const Icon(Icons.chevron_right_rounded),
                 ),
-              ),
+              ],
             ),
         ],
       ),
@@ -971,12 +1203,14 @@ class NearbyDevice {
     required this.ip,
     required this.port,
     required this.url,
+    required this.lastSeen,
   });
 
   final String name;
   final String ip;
   final int port;
   final String url;
+  final DateTime lastSeen;
 }
 
 class _EmbeddedUploadPage extends StatefulWidget {
