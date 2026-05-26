@@ -62,8 +62,8 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
         PageScaffold(
           title: l10n.text('wirelessReceive'),
           subtitle: Platform.isAndroid
-              ? 'Scan the QR code with iPhone Safari to upload directly to this Android device over the same local Wi-Fi network.'
-              : 'Scan the QR code with iPhone Safari or Android Chrome to upload directly to this Windows PC over the same local Wi-Fi network.',
+              ? l10n.text('wirelessReceiveAndroidSubtitle')
+              : l10n.text('wirelessReceiveWindowsSubtitle'),
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 260),
@@ -120,25 +120,23 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
                     _DropHintTile(active: _dragging, busy: _dropBusy),
                   _PathTile(
                     icon: Icons.folder_rounded,
-                    label: 'Received Files',
-                    
-
-                  onTap: () async {
-  if (Platform.isWindows) {
-    await Process.run(
-      'explorer',
-      [Platform.environment['USERPROFILE']! + r'\Pictures\GMP_Airdrop'],
-    );
-  }
-},
-
-
+                    label: l10n.text('receivedFiles'),
+                    onTap: () async {
+                      if (Platform.isWindows) {
+                        await Process.run(
+                          'explorer',
+                          [
+                            Platform.environment['USERPROFILE']! +
+                                r'\Pictures\GMP_Airdrop'
+                          ],
+                        );
+                      }
+                    },
                     path: Platform.isAndroid
-                        ? 'App storage/GMP_Airdrop/Wireless/Photos'
-                        : Platform.environment['USERPROFILE']! + r'\Pictures\GMP_Airdrop',
+                        ? l10n.text('appStorageWirelessPhotos')
+                        : Platform.environment['USERPROFILE']! +
+                            r'\Pictures\GMP_Airdrop',
                   ),
-             
-                  
                   _StatusTile(running: running),
                 ],
               ),
@@ -158,6 +156,7 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
   }
 
   Future<void> _start() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _starting = true;
       _error = null;
@@ -170,7 +169,7 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
         },
       );
     } catch (error) {
-      _error = 'Could not start wireless receive: $error';
+      _error = '${l10n.text('couldNotStartWirelessReceive')}: $error';
     } finally {
       if (mounted) setState(() => _starting = false);
     }
@@ -190,6 +189,7 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
   }
 
   Future<void> _handleDroppedPaths(List<String> paths) async {
+    final l10n = AppLocalizations.of(context);
     final files =
         paths.map(File.new).where((file) => file.path.isNotEmpty).toList();
     if (files.isEmpty) {
@@ -217,13 +217,14 @@ class _WirelessReceiveScreenState extends State<WirelessReceiveScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Transfer complete: ${files.length} files received',
+              '${l10n.text('transferComplete')}: '
+              '${files.length} ${l10n.text('filesReceived')}',
             ),
           ),
         );
       }
     } catch (error) {
-      _error = 'Could not save dropped files: $error';
+      _error = '${l10n.text('couldNotSaveDroppedFiles')}: $error';
     } finally {
       if (mounted) setState(() => _dropBusy = false);
     }
@@ -248,6 +249,7 @@ class _ReceiveSetupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final running = session != null;
+    final l10n = AppLocalizations.of(context);
     return PremiumHoverSurface(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -263,8 +265,8 @@ class _ReceiveSetupCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 220),
                     child: Text(
                       running
-                          ? 'Wireless receive is live'
-                          : 'Start local receive server',
+                          ? l10n.text('wirelessReceiveLive')
+                          : l10n.text('startLocalReceiveServer'),
                       key: ValueKey(running),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w800,
@@ -291,19 +293,21 @@ class _ReceiveSetupCard extends StatelessWidget {
             if (running) ...[
               const SizedBox(height: 18),
               _InfoRow(
-                label: Platform.isAndroid ? 'Android IP' : 'PC IP address',
+                label: Platform.isAndroid
+                    ? l10n.text('androidIp')
+                    : l10n.text('pcIpAddress'),
                 value: session!.ipAddress,
               ),
-              _InfoRow(label: 'Receive URL', value: session!.url),
+              _InfoRow(label: l10n.text('receiveUrl'), value: session!.url),
               _InfoRow(
-                label: 'Available',
-                value: _formatBytes(session!.availableBytes),
+                label: l10n.text('available'),
+                value: _formatBytes(session!.availableBytes, l10n),
               ),
               const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: onStop,
                 icon: const Icon(Icons.stop_circle_rounded),
-                label: const Text('Stop receiving'),
+                label: Text(l10n.text('stopReceiving')),
               ),
             ],
           ],
@@ -313,8 +317,8 @@ class _ReceiveSetupCard extends StatelessWidget {
   }
 }
 
-String _formatBytes(int bytes) {
-  if (bytes < 0) return 'Unknown';
+String _formatBytes(int bytes, AppLocalizations l10n) {
+  if (bytes < 0) return l10n.text('unknown');
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   var size = bytes.toDouble();
   var unitIndex = 0;
@@ -339,6 +343,7 @@ class _StartReceivePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       key: const ValueKey('start-panel'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,7 +373,11 @@ class _StartReceivePanel extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.play_arrow_rounded),
-          label: Text(starting ? 'Starting...' : 'Start wireless receive'),
+          label: Text(
+            starting
+                ? l10n.text('starting')
+                : l10n.text('startWirelessReceive'),
+          ),
         ),
       ],
     );
@@ -567,15 +576,16 @@ class _LivePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: GmpColors.successSoft,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: const Text(
-        'Live',
-        style: TextStyle(
+      child: Text(
+        l10n.text('ready'),
+        style: const TextStyle(
           color: GmpColors.success,
           fontWeight: FontWeight.w800,
           fontSize: 12,
@@ -593,6 +603,7 @@ class _ReceiveHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PremiumHoverSurface(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -600,7 +611,7 @@ class _ReceiveHistoryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Receive progress',
+              l10n.text('receiveProgress'),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -656,6 +667,7 @@ class _ReceiveFileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(categoryIcon(file.category), color: GmpColors.blue),
@@ -672,8 +684,8 @@ class _ReceiveFileTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             file.complete
-                ? '${_formatBytes(file.sizeBytes)} saved'
-                : '${(file.progress * 100).toStringAsFixed(0)}% receiving',
+                ? '${_formatBytes(file.sizeBytes, l10n)} ${l10n.text('saved')}'
+                : '${(file.progress * 100).toStringAsFixed(0)}% ${l10n.text('receiving')}',
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -691,7 +703,7 @@ class _ReceiveFileTile extends StatelessWidget {
     );
   }
 
-  String _formatBytes(int bytes) {
+  String _formatBytes(int bytes, AppLocalizations l10n) {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     var size = bytes.toDouble();
     var unitIndex = 0;
@@ -711,6 +723,7 @@ class _ReceiveEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 240),
       width: double.infinity,
@@ -728,14 +741,16 @@ class _ReceiveEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            running ? 'Waiting for the next upload' : 'No uploads yet',
+            running
+                ? l10n.text('waitingForNextUpload')
+                : l10n.text('noUploadsYet'),
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
             running
-                ? 'Live activity will appear here as files arrive.'
-                : 'Start receiving to show wireless transfer activity.',
+                ? l10n.text('liveActivityWillAppear')
+                : l10n.text('startReceivingToShowActivity'),
             textAlign: TextAlign.center,
             style: const TextStyle(color: GmpColors.muted),
           ),
@@ -818,6 +833,7 @@ class _DropOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       color: Colors.white.withValues(alpha: 0.78),
       child: Center(
@@ -836,21 +852,22 @@ class _DropOverlay extends StatelessWidget {
               ),
             ],
           ),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.file_download_rounded,
+              const Icon(Icons.file_download_rounded,
                   size: 42, color: GmpColors.blue),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text(
-                'Release to save',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+                l10n.text('releaseToSave'),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
               ),
-              SizedBox(height: 6),
+              const SizedBox(height: 6),
               Text(
-                'Files will land in the same wireless folders.',
+                l10n.text('filesWillLandWirelessFolders'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: GmpColors.muted),
+                style: const TextStyle(color: GmpColors.muted),
               ),
             ],
           ),
@@ -868,14 +885,12 @@ class _DropHintTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       width: 250,
       height: 108,
-      
-    child: PremiumHoverSurface(
 
-      
-
+      child: PremiumHoverSurface(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(16),
@@ -896,12 +911,16 @@ class _DropHintTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      busy ? 'Receiving files...' : 'Ready to receive files',
+                      busy
+                          ? l10n.text('receivingFiles')
+                          : l10n.text('readyToReceiveFiles'),
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      active ? 'Release anywhere' : 'Windows local drop ready',
+                      active
+                          ? l10n.text('releaseAnywhere')
+                          : l10n.text('windowsLocalDropReady'),
                       overflow: TextOverflow.ellipsis,
                       style:
                           const TextStyle(color: GmpColors.muted, fontSize: 12),
@@ -912,10 +931,9 @@ class _DropHintTile extends StatelessWidget {
             ],
           ),
         ),
-     
-     ), // PremiumHoverSurface
+      ), // PremiumHoverSurface
 // InkWell
-); // SizedBox
+    ); // SizedBox
   }
 }
 
@@ -968,52 +986,44 @@ class _PathTile extends StatelessWidget {
       height: 108,
 
       child: InkWell(
-  
-onTap: () async {
-  if (Platform.isWindows) {
-    await Directory(path).create(recursive: true);
-await Process.run('explorer', [path]);
-  }
-},
-
-  borderRadius: BorderRadius.circular(22),
-  child: PremiumHoverSurface(
-        
-        
-        
-        
-        
-        
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(icon, color: GmpColors.blue),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(label,
-                        style: const TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text(
-                      path,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          const TextStyle(color: GmpColors.muted, fontSize: 12),
-                    ),
-                  ],
+        onTap: () async {
+          if (Platform.isWindows) {
+            await Directory(path).create(recursive: true);
+            await Process.run('explorer', [path]);
+          }
+        },
+        borderRadius: BorderRadius.circular(22),
+        child: PremiumHoverSurface(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: GmpColors.blue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(label,
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 4),
+                      Text(
+                        path,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: GmpColors.muted, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    ), // InkWell
-); // SizedBox
+      ), // InkWell
+    ); // SizedBox
   }
 }
 
@@ -1024,6 +1034,7 @@ class _StatusTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       width: 250,
       height: 108,
@@ -1042,15 +1053,15 @@ class _StatusTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'Network mode',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                    Text(
+                      l10n.text('networkMode'),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       running
-                          ? 'Local receive server active'
-                          : 'Server stopped',
+                          ? l10n.text('localReceiveServerActive')
+                          : l10n.text('serverStopped'),
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: GmpColors.muted),
                     ),

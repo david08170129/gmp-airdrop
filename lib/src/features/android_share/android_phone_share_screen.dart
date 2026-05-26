@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/transfer_models.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/gmp_colors.dart';
 import '../../widgets/app_cards.dart';
 import 'android_phone_share_service.dart';
@@ -45,12 +46,12 @@ class _AndroidPhoneShareScreenState extends State<AndroidPhoneShareScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final running = _session != null;
 
     return PageScaffold(
-      title: 'Send to Phone',
-      subtitle:
-          'Share selected Android photos, videos, and files to iPhone Safari over the same local Wi-Fi network.',
+      title: l10n.text('sendToPhoneTitle'),
+      subtitle: l10n.text('sendToPhoneSubtitle'),
       children: [
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1080),
@@ -100,18 +101,19 @@ class _AndroidPhoneShareScreenState extends State<AndroidPhoneShareScreen> {
 
   Future<void> _pick(TransferCategory category) async {
     if (!_ensureAndroid()) return;
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _busy = true;
-      _status = 'Opening Android file picker...';
+      _status = l10n.text('openingAndroidFilePicker');
     });
     try {
       final files = await _service.pickFiles(category);
       _selected.addAll(files);
       _status = _selected.isEmpty
-          ? 'No files selected'
-          : '${_selected.length} file(s) selected';
+          ? l10n.text('noFilesSelected')
+          : '${_selected.length} ${l10n.text('filesSelected')}';
     } on PlatformException catch (error) {
-      _status = error.message ?? 'Could not select files.';
+      _status = error.message ?? l10n.text('couldNotSelectFiles');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -119,9 +121,10 @@ class _AndroidPhoneShareScreenState extends State<AndroidPhoneShareScreen> {
 
   Future<void> _startShare() async {
     if (!_ensureAndroid() || _selected.isEmpty) return;
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _busy = true;
-      _status = 'Preparing local share...';
+      _status = l10n.text('preparingLocalShare');
       _downloads.clear();
     });
     try {
@@ -130,30 +133,34 @@ class _AndroidPhoneShareScreenState extends State<AndroidPhoneShareScreen> {
       await _service.prepareFiles(_selected);
       final session = await _service.start();
       _session = session;
-      _status = '${_service.files.length} file(s) ready for iPhone download';
+      _status =
+          '${_service.files.length} ${l10n.text('filesReadyForIphoneDownload')}';
     } on PlatformException catch (error) {
-      _status = error.message ?? 'Could not prepare files for sharing.';
+      _status = error.message ?? l10n.text('couldNotPrepareFilesForSharing');
     } catch (error) {
-      _status = 'Could not start phone share: $error';
+      _status = '${l10n.text('couldNotStartPhoneShare')}: $error';
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _stopShare() async {
+    final l10n = AppLocalizations.of(context);
     await _service.stop();
     if (!mounted) return;
     setState(() {
       _session = null;
-      _status = 'Phone share stopped';
+      _status = l10n.text('phoneShareStopped');
     });
   }
 
   bool _ensureAndroid() {
     if (Platform.isAndroid) return true;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Send to Phone runs from the Android app.'),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).text('sendToPhoneAndroidOnly'),
+        ),
       ),
     );
     return false;
@@ -188,6 +195,7 @@ class _ShareSetupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final running = session != null;
+    final l10n = AppLocalizations.of(context);
     return PremiumHoverSurface(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -208,8 +216,8 @@ class _ShareSetupCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     running
-                        ? 'iPhone download page is live'
-                        : 'Android local share',
+                        ? l10n.text('iphoneDownloadPageLive')
+                        : l10n.text('androidLocalShare'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -233,8 +241,9 @@ class _ShareSetupCard extends StatelessWidget {
               Text(status!, style: const TextStyle(color: GmpColors.muted)),
             if (running) ...[
               const SizedBox(height: 12),
-              _InfoRow(label: 'Android IP', value: session!.ipAddress),
-              _InfoRow(label: 'Download URL', value: session!.url),
+              _InfoRow(
+                  label: l10n.text('androidIp'), value: session!.ipAddress),
+              _InfoRow(label: l10n.text('downloadUrl'), value: session!.url),
             ],
             const SizedBox(height: 16),
             Wrap(
@@ -250,20 +259,24 @@ class _ShareSetupCard extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.play_arrow_rounded),
-                  label: Text(running ? 'Refresh share' : 'Start phone share'),
+                  label: Text(
+                    running
+                        ? l10n.text('refreshShare')
+                        : l10n.text('startPhoneShare'),
+                  ),
                 ),
                 if (running)
                   OutlinedButton.icon(
                     onPressed: onStop,
                     icon: const Icon(Icons.stop_circle_rounded),
-                    label: const Text('Stop sharing'),
+                    label: Text(l10n.text('stopSharing')),
                   ),
               ],
             ),
             if (sharedFiles.isNotEmpty) ...[
               const SizedBox(height: 18),
               Text(
-                '${sharedFiles.length} file(s) on download page',
+                '${sharedFiles.length} ${l10n.text('filesOnDownloadPage')}',
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ],
@@ -291,6 +304,7 @@ class _ShareStartPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       width: double.infinity,
@@ -305,8 +319,8 @@ class _ShareStartPanel extends StatelessWidget {
         children: [
           Text(
             selectedCount == 0
-                ? 'Choose files from Android'
-                : '$selectedCount file(s) selected',
+                ? l10n.text('chooseFilesFromAndroid')
+                : '$selectedCount ${l10n.text('filesSelected')}',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -319,17 +333,17 @@ class _ShareStartPanel extends StatelessWidget {
               FilledButton.icon(
                 onPressed: busy ? null : onPickPhotos,
                 icon: const Icon(Icons.photo_library_rounded),
-                label: const Text('Photos'),
+                label: Text(l10n.text('photos')),
               ),
               FilledButton.icon(
                 onPressed: busy ? null : onPickVideos,
                 icon: const Icon(Icons.video_library_rounded),
-                label: const Text('Videos'),
+                label: Text(l10n.text('videos')),
               ),
               OutlinedButton.icon(
                 onPressed: busy ? null : onPickFiles,
                 icon: const Icon(Icons.folder_rounded),
-                label: const Text('Files'),
+                label: Text(l10n.text('files')),
               ),
             ],
           ),
@@ -393,6 +407,7 @@ class _ShareActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return PremiumHoverSurface(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -400,7 +415,7 @@ class _ShareActivityCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Download activity',
+              l10n.text('downloadActivity'),
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -430,6 +445,9 @@ class _ShareFileTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = download?.progress ?? 0;
     final complete = download?.complete ?? false;
+    final l10n = AppLocalizations.of(context);
+    final typeLabel =
+        file.typeLabel == 'File' ? l10n.text('files') : file.typeLabel;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(categoryIcon(file.category), color: GmpColors.blue),
@@ -437,8 +455,10 @@ class _ShareFileTile extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${file.sizeLabel} - ${file.typeLabel}',
-              overflow: TextOverflow.ellipsis),
+          Text(
+            '${file.sizeLabel} - $typeLabel',
+            overflow: TextOverflow.ellipsis,
+          ),
           if (download != null) ...[
             const SizedBox(height: 6),
             LinearProgressIndicator(
@@ -464,6 +484,7 @@ class _EmptyShareState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -480,14 +501,16 @@ class _EmptyShareState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            running ? 'Waiting for iPhone downloads' : 'No shared files yet',
+            running
+                ? l10n.text('waitingForIphoneDownloads')
+                : l10n.text('noSharedFilesYet'),
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Selected files will appear here before you show the QR code.',
+          Text(
+            l10n.text('selectedFilesAppearBeforeQr'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: GmpColors.muted),
+            style: const TextStyle(color: GmpColors.muted),
           ),
         ],
       ),
