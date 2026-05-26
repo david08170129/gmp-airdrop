@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GMP AirDrop for Windows</title>
+    <meta
+      name="description"
+      content="Download the GMP AirDrop Windows receiver and send files between iPhone and Windows PC over local Wi-Fi."
+    >
+    <link rel="icon" href="assets/images/gmp_app_icon.png">
+    <style>
+      :root {
+        --blue: #155fd6;
+        --blue-dark: #083f9f;
+        --blue-soft: #eef5ff;
+        --ink: #12223a;
+        --muted: #697589;
+        --line: #e3eaf5;
+        --paper: #f7faff;
+        --surface: #ffffff;
+        --success: #16a36f;
+        --shadow: 0 24px 70px rgba(21, 95, 214, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 8% 0%, rgba(21, 95, 214, 0.12), transparent 30rem),
+          linear-gradient(180deg, #fbfdff 0%, var(--paper) 48%, #ffffff 100%);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 18px;
+        max-width: 840px;
+        font-size: clamp(44px, 8vw, 92px);
+        line-height: 0.98;
+      }
+
+      h2 {
+        margin-bottom: 18px;
+        font-size: clamp(30px, 4vw, 52px);
+        line-height: 1.08;
+      }
+
+      h3 {
+        margin-bottom: 8px;
+        font-size: 21px;
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 16px clamp(20px, 5vw, 72px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.78);
+        background: rgba(247, 250, 255, 0.82);
+        backdrop-filter: blur(20px);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+      }
+
+      .brand img {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+      }
+
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .nav a {
+        padding: 9px 11px;
+        border-radius: 999px;
+      }
+
+      .nav a:hover {
+        color: var(--blue);
+        background: var(--surface);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
+        gap: clamp(34px, 7vw, 86px);
+        align-items: center;
+        min-height: calc(100svh - 70px);
+        padding: clamp(58px, 8vw, 112px) clamp(20px, 5vw, 72px) 54px;
+      }
+
+      .eyebrow {
+        margin-bottom: 14px;
+        color: var(--blue-dark);
+        font-size: 13px;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .hero-text {
+        max-width: 650px;
+        font-size: clamp(18px, 2vw, 23px);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 32px 0 16px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        padding: 0 20px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font-weight: 850;
+        transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+      }
+
+      .button.primary {
+        color: #fff;
+        background: var(--blue);
+        box-shadow: 0 16px 38px rgba(21, 95, 214, 0.24);
+      }
+
+      .button.primary:hover {
+        background: var(--blue-dark);
+      }
+
+      .button.secondary {
+        background: var(--surface);
+      }
+
+      .hero-note {
+        font-size: 14px;
+      }
+
+      .app-window {
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.84);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: var(--shadow);
+      }
+
+      .window-top {
+        display: flex;
+        gap: 8px;
+        padding: 17px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .window-top span {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #cbd7ea;
+      }
+
+      .window-body {
+        padding: 26px;
+      }
+
+      .receiver-card {
+        display: grid;
+        grid-template-columns: 78px 1fr;
+        gap: 18px;
+        align-items: center;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: #fff;
+      }
+
+      .receiver-icon {
+        display: grid;
+        place-items: center;
+        width: 78px;
+        aspect-ratio: 1;
+        border-radius: 18px;
+        color: #fff;
+        background: var(--blue);
+        font-weight: 900;
+      }
+
+      .receiver-card strong,
+      .receiver-card span {
+        display: block;
+      }
+
+      .receiver-card strong {
+        margin-bottom: 6px;
+        font-size: 24px;
+      }
+
+      .mini-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .mini-list div {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 15px 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--blue-soft);
+      }
+
+      .mini-list b {
+        color: var(--success);
+      }
+
+      .section {
+        padding: clamp(62px, 8vw, 112px) clamp(20px, 5vw, 72px);
+      }
+
+      .section-heading {
+        max-width: 820px;
+        margin-bottom: 28px;
+      }
+
+      .two-column {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.9fr);
+        gap: clamp(24px, 5vw, 64px);
+        align-items: start;
+      }
+
+      .panel,
+      .tile,
+      details {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 16px 44px rgba(21, 95, 214, 0.07);
+      }
+
+      .panel {
+        padding: 24px;
+      }
+
+      .steps,
+      .checks {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .steps {
+        counter-reset: step;
+      }
+
+      .steps li,
+      .checks li {
+        position: relative;
+        padding: 18px 18px 18px 56px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+      }
+
+      .steps li::before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        left: 16px;
+        top: 15px;
+        display: grid;
+        place-items: center;
+        width: 28px;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        color: #fff;
+        background: var(--blue);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .checks li::before {
+        content: "";
+        position: absolute;
+        left: 22px;
+        top: 24px;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--success);
+      }
+
+      .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .screenshot {
+        overflow: hidden;
+        min-height: 250px;
+        padding: 18px;
+      }
+
+      .screenshot img {
+        width: 100%;
+        height: 170px;
+        object-fit: contain;
+        border-radius: 14px;
+        background: var(--blue-soft);
+      }
+
+      .placeholder-frame {
+        display: grid;
+        place-items: center;
+        height: 170px;
+        border: 1px dashed #b8c7df;
+        border-radius: 14px;
+        color: var(--blue-dark);
+        background: var(--blue-soft);
+        font-weight: 850;
+      }
+
+      .faq-list {
+        display: grid;
+        gap: 12px;
+        max-width: 960px;
+      }
+
+      summary {
+        cursor: pointer;
+        padding: 20px 22px;
+        font-size: 18px;
+        font-weight: 850;
+      }
+
+      details p {
+        margin: -2px 22px 22px;
+      }
+
+      .callout {
+        margin: 0 clamp(20px, 5vw, 72px);
+        padding-right: clamp(24px, 5vw, 58px);
+        padding-left: clamp(24px, 5vw, 58px);
+        border-radius: 28px;
+        color: #fff;
+        background: var(--ink);
+      }
+
+      .callout p,
+      .callout li {
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      .callout .eyebrow {
+        color: #9bc7ff;
+      }
+
+      .callout .panel {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.14);
+        box-shadow: none;
+      }
+
+      .footer {
+        display: flex;
+        justify-content: center;
+        padding: 34px 20px 44px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      @media (max-width: 980px) {
+        .hero,
+        .two-column {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          min-height: auto;
+        }
+
+        .gallery-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .site-header {
+          position: static;
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .nav {
+          justify-content: flex-start;
+        }
+
+        .actions {
+          flex-direction: column;
+        }
+
+        .button {
+          width: 100%;
+        }
+
+        .receiver-card {
+          grid-template-columns: 1fr;
+        }
+
+        .callout {
+          margin-right: 20px;
+          margin-left: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="GMP AirDrop home">
+        <img src="assets/images/gmp_app_icon.png" alt="">
+        <span>GMP AirDrop</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#download">Download</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#faq">FAQ</a>
+        <a href="#screenshots">Screenshots</a>
+        <a href="#review">Reviewer notes</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Windows receiver for iPhone companion transfer</p>
+          <h1>GMP AirDrop for Windows</h1>
+          <p class="hero-text">
+            Send photos, videos, and files from iPhone to your Windows PC over
+            the same local Wi-Fi network. No cloud account, no relay server.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="installer/GMP_Airdrop_Setup.exe" download>
+              Download Windows receiver
+            </a>
+            <a class="button secondary" href="#how">View setup steps</a>
+          </div>
+          <p class="hero-note">Direct local network transfer for iPhone and Windows.</p>
+        </div>
+
+        <div class="app-window" aria-label="Windows receiver preview">
+          <div class="window-top">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="window-body">
+            <div class="receiver-card">
+              <div class="receiver-icon">PC</div>
+              <div>
+                <strong>Wireless Receive</strong>
+                <span>Ready for local Wi-Fi transfers</span>
+              </div>
+            </div>
+            <div class="mini-list">
+              <div><span>iPhone detected</span><b>Ready</b></div>
+              <div><span>IMG_2481.HEIC</span><b>Received</b></div>
+              <div><span>Video.mov</span><b>Local Wi-Fi</b></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section two-column" id="download">
+        <div>
+          <p class="eyebrow">Download Windows receiver</p>
+          <h2>Install the PC receiver before sending from iPhone.</h2>
+        </div>
+        <div class="panel">
+          <p>
+            Download and open the Windows receiver, then start Wireless Receive.
+            The iPhone app can auto-detect the PC on the same Wi-Fi or connect
+            by scanning the QR code.
+          </p>
+          <a class="button primary" href="installer/GMP_Airdrop_Setup.exe" download>
+            Download GMP_Airdrop_Setup.exe
+          </a>
+        </div>
+      </section>
+
+      <section class="section" id="how">
+        <div class="section-heading">
+          <p class="eyebrow">How to use</p>
+          <h2>From iPhone to Windows in a few clear steps.</h2>
+        </div>
+        <ol class="steps">
+          <li>Open GMP AirDrop on your Windows PC.</li>
+          <li>Click Wireless Receive.</li>
+          <li>Make sure iPhone and PC are on the same Wi-Fi network.</li>
+          <li>Open GMP AirDrop on iPhone.</li>
+          <li>Select photos, videos, or files manually.</li>
+          <li>Send to the detected PC or scan the QR code shown on Windows.</li>
+        </ol>
+      </section>
+
+      <section class="section two-column" id="privacy">
+        <div>
+          <p class="eyebrow">Privacy Policy</p>
+          <h2>Private by design, local by default.</h2>
+        </div>
+        <div class="panel">
+          <ul class="checks">
+            <li>No account is required.</li>
+            <li>No cloud relay is used.</li>
+            <li>Files transfer over your local Wi-Fi network.</li>
+            <li>The user manually chooses every file before sending.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <div class="section-heading">
+          <p class="eyebrow">FAQ</p>
+          <h2>Common setup questions.</h2>
+        </div>
+        <div class="faq-list">
+          <details open>
+            <summary>Does the iPhone app require the Windows receiver?</summary>
+            <p>Yes. For iPhone-to-PC transfer, the Windows receiver must be open and running.</p>
+          </details>
+          <details>
+            <summary>Does it work without internet?</summary>
+            <p>Yes, as long as both devices are on the same local Wi-Fi network.</p>
+          </details>
+          <details>
+            <summary>What if auto discovery does not find my PC?</summary>
+            <p>Use the QR code shown in Wireless Receive, and allow Windows Firewall private-network access.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="section" id="screenshots">
+        <div class="section-heading">
+          <p class="eyebrow">Screenshots</p>
+          <h2>Preview the GMP AirDrop experience.</h2>
+        </div>
+        <div class="gallery-grid">
+          <article class="tile screenshot">
+            <img src="assets/images/gmp_logo.png" alt="GMP AirDrop logo preview">
+            <h3>Windows receiver</h3>
+            <p>Start Wireless Receive on the PC to accept incoming iPhone files.</p>
+          </article>
+          <article class="tile screenshot">
+            <div class="placeholder-frame">iPhone send screen</div>
+            <h3>iPhone companion</h3>
+            <p>Select files manually and send to the detected Windows PC.</p>
+          </article>
+          <article class="tile screenshot">
+            <div class="placeholder-frame">QR fallback</div>
+            <h3>QR code connection</h3>
+            <p>Scan the receiver QR code if automatic discovery is unavailable.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section callout" id="review">
+        <div class="two-column">
+          <div>
+            <p class="eyebrow">Reviewer instructions</p>
+            <h2>Testing requires the Windows receiver.</h2>
+          </div>
+          <div class="panel">
+            <ol class="steps">
+              <li>Install or open the Windows receiver on a Windows PC.</li>
+              <li>Open GMP AirDrop and click Wireless Receive.</li>
+              <li>Connect the iPhone and PC to the same Wi-Fi network.</li>
+              <li>Open the iPhone app, select files, and send to the detected PC.</li>
+              <li>If discovery is blocked, scan the QR code shown on Windows.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="section two-column" id="smartscreen">
+        <div>
+          <p class="eyebrow">SmartScreen explanation</p>
+          <h2>Windows may warn about new apps.</h2>
+        </div>
+        <div class="panel">
+          <p>
+            Microsoft SmartScreen may show a warning for new or unsigned builds
+            until the app has enough download reputation. Only install GMP
+            AirDrop from the official download location provided by the developer.
+          </p>
+        </div>
+      </section>
+
+      <section class="section two-column" id="local">
+        <div>
+          <p class="eyebrow">Local Wi-Fi explanation</p>
+          <h2>Your files move device-to-device.</h2>
+        </div>
+        <div class="panel">
+          <p>
+            GMP AirDrop creates a temporary local receiver on the Windows PC.
+            The iPhone sends selected files to that receiver over the same Wi-Fi
+            network. No account, cloud storage, or internet relay is required.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>GMP AirDrop for Windows</span>
+    </footer>
+  </body>
+</html>

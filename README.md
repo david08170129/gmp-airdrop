@@ -1,4 +1,20 @@
-# GMP Airdrop
+# GMP AirDrop Windows Download Website
+
+This folder includes a plain HTML/CSS download website for the GMP AirDrop
+Windows receiver.
+
+## Website Files
+
+- `index.html` - one-page Windows receiver download and instruction website
+- `assets/` - app logo and icon assets used by the page
+- `installer/GMP_Airdrop_Setup.exe` - Windows receiver download target
+
+Open `index.html` directly in a browser, or host this folder with any static
+file server. No React, Vite, or build tools are required.
+
+---
+
+# GMP Airdrop Flutter App
 
 GMP Airdrop is a Flutter app for dropping photos, videos, and files between iPhone, Android phones, and Windows PCs.
 
