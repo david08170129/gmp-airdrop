@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../theme/gmp_colors.dart';
 import '../../widgets/gmp_logo.dart';
 import 'ios_native_picker_service.dart';
+import 'ios_share_inbox_service.dart';
 import 'ios_wireless_upload_service.dart';
 
 class IosCompanionShell extends StatefulWidget {
@@ -419,24 +421,274 @@ class _UploadUrlCard extends StatelessWidget {
   }
 }
 
-class _SharedFilesPage extends StatelessWidget {
+class _SharedFilesPage extends StatefulWidget {
   const _SharedFilesPage();
 
   @override
+  State<_SharedFilesPage> createState() => _SharedFilesPageState();
+}
+
+class _SharedFilesPageState extends State<_SharedFilesPage>
+    with WidgetsBindingObserver {
+  final _service = IosShareInboxService();
+  List<IosSharedBatch> _batches = const [];
+  bool _loading = true;
+  bool _clearing = false;
+  String? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_loadInbox());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_loadInbox(silent: true));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final sharedItems = _batches.expand((batch) => batch.items).toList();
+
     return _IosPage(
       title: 'Share Sheet intake.',
       subtitle:
-          'Initial surface for files sent to GMP Airdrop from Photos, Files, Safari, and other iOS apps.',
-      children: const [
-        _EmptyStateCard(
-          icon: Icons.ios_share_rounded,
-          title: 'No shared files yet',
-          body:
-              'Native Share Extension wiring will stage selected files here before opening the upload flow.',
+          'Files sent to GMP Airdrop from Photos, Files, Safari, and other iOS apps appear here.',
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: _loading || _clearing ? null : _loadInbox,
+              icon: _loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed:
+                  sharedItems.isEmpty || _loading || _clearing ? null : _clear,
+              icon: _clearing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_outline_rounded),
+              label: const Text('Clear'),
+            ),
+          ],
         ),
+        const SizedBox(height: 16),
+        if (_status != null)
+          _GlassCard(
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: GmpColors.blue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _status!,
+                    style: const TextStyle(color: GmpColors.muted),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (_status != null) const SizedBox(height: 16),
+        if (_loading && _batches.isEmpty)
+          const _GlassCard(
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (sharedItems.isEmpty)
+          const _EmptyStateCard(
+            icon: Icons.ios_share_rounded,
+            title: 'No shared files yet',
+            body:
+                'Use the iOS Share Sheet in Photos, Files, Safari, or another app and choose GMP Airdrop.',
+          )
+        else
+          for (final batch in _batches) ...[
+            _SharedBatchCard(batch: batch),
+            const SizedBox(height: 12),
+          ],
       ],
     );
+  }
+
+  Future<void> _loadInbox({bool silent = false}) async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      if (!silent) _status = null;
+    });
+
+    try {
+      final batches = await _service.getSharedInbox();
+      if (!mounted) return;
+      setState(() {
+        _batches = batches;
+        _status = batches.isEmpty
+            ? null
+            : '${batches.expand((batch) => batch.items).length} shared item(s) ready.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _status = 'Could not load shared files: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  Future<void> _clear() async {
+    setState(() {
+      _clearing = true;
+      _status = 'Clearing shared files...';
+    });
+
+    try {
+      final ids = _batches.map((batch) => batch.id).toList();
+      final cleared = await _service.clearSharedInbox(ids);
+      if (!mounted) return;
+      setState(() {
+        if (cleared) {
+          _batches = const [];
+          _status = 'Shared files cleared.';
+        } else {
+          _status = 'Some shared files could not be cleared.';
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _status = 'Could not clear shared files: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _clearing = false);
+      }
+    }
+  }
+}
+
+class _SharedBatchCard extends StatelessWidget {
+  const _SharedBatchCard({required this.batch});
+
+  final IosSharedBatch batch;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.ios_share_rounded, color: GmpColors.blue),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${batch.items.length} shared item(s)',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              Text(
+                _formatDate(batch.receivedAt),
+                style: const TextStyle(color: GmpColors.muted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final item in batch.items)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                _iconForType(item.type),
+                color: item.exists || item.path.isEmpty
+                    ? GmpColors.blue
+                    : Colors.orange,
+              ),
+              title: Text(
+                item.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                _itemSubtitle(item),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: item.path.isNotEmpty && !item.exists
+                  ? const Icon(Icons.warning_amber_rounded,
+                      color: Colors.orange)
+                  : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  static IconData _iconForType(String type) {
+    return switch (type) {
+      'image' => Icons.image_rounded,
+      'video' => Icons.movie_rounded,
+      'pdf' => Icons.picture_as_pdf_rounded,
+      'text' => Icons.notes_rounded,
+      'url' => Icons.link_rounded,
+      'error' => Icons.error_outline_rounded,
+      _ => Icons.insert_drive_file_rounded,
+    };
+  }
+
+  static String _itemSubtitle(IosSharedItem item) {
+    if (item.message != null && item.message!.isNotEmpty) {
+      return item.message!;
+    }
+
+    final details = <String>[
+      item.type,
+      if (item.sizeBytes > 0) _formatBytes(item.sizeBytes),
+      if (item.uti.isNotEmpty) item.uti,
+      if (item.path.isNotEmpty && !item.exists) 'file missing',
+    ];
+    return details.join(' - ');
+  }
+
+  static String _formatDate(DateTime? value) {
+    if (value == null) return '';
+    final local = value.toLocal();
+    String two(int number) => number.toString().padLeft(2, '0');
+    return '${local.year}-${two(local.month)}-${two(local.day)} '
+        '${two(local.hour)}:${two(local.minute)}';
+  }
+
+  static String _formatBytes(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var size = bytes.toDouble();
+    var unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    final decimals = unitIndex == 0 || size >= 10 ? 0 : 1;
+    return '${size.toStringAsFixed(decimals)} ${units[unitIndex]}';
   }
 }
 
