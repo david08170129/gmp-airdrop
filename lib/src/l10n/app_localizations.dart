@@ -19,7 +19,7 @@ class AppLocalizations {
 
   static const _values = {
     'en': {
-      'appName': 'GMP Airdrop',
+      'appName': 'GMP Transfer',
       'tagline': 'Transfer without limits',
       'home': 'Home',
       'usb': 'USB',
@@ -57,9 +57,9 @@ class AppLocalizations {
       'windowsImport': 'Windows import',
       'detectDrive': 'Detect USB drive',
       'scanUsb': 'Scan USB drives',
-      'driveReady': 'GMP_Airdrop folder found',
+      'driveReady': 'GMP_Transfer folder found',
       'noDrive': 'No GMP drive detected',
-      'createStructure': 'Create GMP_Airdrop structure',
+      'createStructure': 'Create GMP_Transfer structure',
       'folderPlan': 'Folder plan',
       'exportWorkflow': 'Export workflow',
       'selectedItems': 'Selected items',
@@ -105,7 +105,7 @@ class AppLocalizations {
       'startReceivingToShowActivity':
           'Start receiving to show wireless transfer activity.',
       'receivedFiles': 'Received Files',
-      'appStorageWirelessPhotos': 'App storage/GMP_Airdrop/Wireless/Photos',
+      'appStorageWirelessPhotos': 'App storage/GMP_Transfer/Wireless/Photos',
       'dropFiles': 'Drop files',
       'receivingFiles': 'Receiving files...',
       'readyToReceiveFiles': 'Ready to receive files',
@@ -160,7 +160,7 @@ class AppLocalizations {
           'Selected files will appear here before you show the QR code.',
     },
     'zh': {
-      'appName': 'GMP Airdrop',
+      'appName': 'GMP Transfer',
       'tagline': '无限制传输',
       'home': '首页',
       'usb': 'USB',

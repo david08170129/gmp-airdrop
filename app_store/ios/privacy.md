@@ -6,10 +6,10 @@ The MVP should declare no tracking and no account-based identity collection.
 
 ## Permissions
 
-- Camera: scan GMP Airdrop QR codes.
+- Camera: scan GGMP Transfer QR codes.
 - Photo Library: allow user-selected photos and videos for transfer.
 - Files access: initiated by the user through iOS document pickers or Share Sheet.
-- Local Network: connect to GMP Airdrop receiver URLs on the same Wi-Fi network.
+- Local Network: connect to GMP Transfer receiver URLs on the same Wi-Fi network.
 
 ## App Privacy Notes
 

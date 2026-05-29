@@ -1,6 +1,6 @@
-# GMP Airdrop
+# GMP Transfer
 
-GMP Airdrop is a Flutter app for dropping photos, videos, and files between iPhone, Android phones, and Windows PCs.
+GMP Transfer is a Flutter app for dropping photos, videos, and files between iPhone, Android phones, and Windows PCs.
 
 This is not a website project. The target platforms are:
 

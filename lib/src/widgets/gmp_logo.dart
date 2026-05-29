@@ -8,7 +8,7 @@ class GmpLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'GMP Airdrop',
+      label: 'GMP Transfer',
       image: true,
       child: Image.asset(
         'assets/images/gmp_logo.png',

@@ -39,7 +39,7 @@ class _IosCompanionShellState extends State<IosCompanionShell>
 
     setState(() {
       _nearbySearching = true;
-      _nearbyStatus = 'Searching local Wi-Fi for GMP AirDrop receivers...';
+      _nearbyStatus = 'Searching local Wi-Fi for GMP Transfer receivers...';
     });
 
     try {
@@ -138,7 +138,7 @@ class _IosCompanionShellState extends State<IosCompanionShell>
   final _history = const [
     IosTransferHistoryItem(
       title: 'Safari upload session',
-      subtitle: 'Ready for GMP Airdrop QR links',
+      subtitle: 'Ready for GMP Transfer QR links',
       status: 'Prepared',
     ),
   ];
@@ -185,7 +185,7 @@ class _IosCompanionShellState extends State<IosCompanionShell>
       _nearbySearching = true;
       if (!silent) {
         _nearbyStatus = _nearbyDevices.isEmpty
-            ? 'Searching local Wi-Fi for GMP AirDrop receivers...'
+            ? 'Searching local Wi-Fi for GMP Transfer receivers...'
             : '${_nearbyDevices.length} receiver(s) found. Searching again...';
       } else if (_nearbyDevices.isEmpty) {
         _nearbyStatus =
@@ -355,13 +355,13 @@ class _OnboardingPage extends StatelessWidget {
     return _IosPage(
       title: 'Send from iPhone with less friction.',
       subtitle:
-          'Scan a GMP Airdrop QR code, open the local upload page, and share files without cloud accounts.',
+          'Scan a GMP Transfer QR code, open the local upload page, and share files without cloud accounts.',
       children: [
         _HeroPanel(onScanPressed: onScanPressed),
         const SizedBox(height: 16),
         const _StepCard(
           icon: Icons.qr_code_scanner_rounded,
-          title: 'Scan GMP Airdrop QR codes',
+          title: 'Scan GMP Transfer QR codes',
           body: 'Use the companion scanner for Windows or Android receivers.',
         ),
         const _StepCard(
@@ -372,7 +372,7 @@ class _OnboardingPage extends StatelessWidget {
         ),
         const _StepCard(
           icon: Icons.ios_share_rounded,
-          title: 'Share into GMP Airdrop',
+          title: 'Share into GMP Transfer',
           body:
               'Prepare Share Sheet intake for photos, videos, PDFs, and files.',
         ),
@@ -438,7 +438,7 @@ class _QrScannerPage extends StatelessWidget {
     return _IosPage(
       title: 'Scan a receiver QR code.',
       subtitle:
-          'MVP hook for camera-based GMP Airdrop QR scanning. It will accept local HTTP upload URLs from Windows and Android receivers.',
+          'MVP hook for camera-based GMP Transfer QR scanning. It will accept local HTTP upload URLs from Windows and Android receivers.',
       children: const [
         _ScannerPlaceholder(),
         SizedBox(height: 16),
@@ -517,7 +517,7 @@ class _UploadWebPage extends StatelessWidget {
     return _IosPage(
       title: 'Upload page bridge.',
       subtitle:
-          'Structure for opening the existing GMP Airdrop browser upload page in WKWebView or Safari.',
+          'Structure for opening the existing GMP Transfer browser upload page in WKWebView or Safari.',
       children: [
         _UploadUrlCard(
           devices: devices,
@@ -663,7 +663,7 @@ class _SharedFilesPageState extends State<_SharedFilesPage>
     return _IosPage(
       title: 'Share Sheet intake.',
       subtitle:
-          'Files sent to GMP Airdrop from Photos, Files, Safari, and other iOS apps appear here.',
+          'Files sent to GMP Transfer from Photos, Files, Safari, and other iOS apps appear here.',
       children: [
         Wrap(
           spacing: 10,
@@ -720,7 +720,7 @@ class _SharedFilesPageState extends State<_SharedFilesPage>
             icon: Icons.ios_share_rounded,
             title: 'No shared files yet',
             body:
-                'Use the iOS Share Sheet in Photos, Files, Safari, or another app and choose GMP Airdrop.',
+                'Use the iOS Share Sheet in Photos, Files, Safari, or another app and choose GMP Transfer.',
           )
         else
           for (final batch in _batches) ...[
@@ -1277,7 +1277,7 @@ class _EmbeddedUploadPageState extends State<_EmbeddedUploadPage> {
         padding: const EdgeInsets.fromLTRB(20, 22, 20, 34),
         children: [
           Text(
-            'Send to GMP Airdrop',
+            'Send to GMP Transfer',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: GmpColors.text,
                   fontWeight: FontWeight.w800,

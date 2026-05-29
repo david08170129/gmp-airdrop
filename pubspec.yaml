@@ -1,5 +1,5 @@
 name: gmp_airdrop
-description: Cross-platform GMP Airdrop app for iOS, Android, and Windows file transfer.
+description: Cross-platform GMP transfer app for iOS, Android, and Windows file transfer.
 publish_to: "none"
 version: 0.3.11+32
 

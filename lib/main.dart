@@ -29,7 +29,7 @@ class _GmpAirdropAppState extends State<GmpAirdropApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GMP Airdrop',
+      title: 'GMP Transfer',
       debugShowCheckedModeBanner: false,
       theme: GmpTheme.light(),
       locale: _locale,

@@ -31,7 +31,7 @@ final class ShareViewController: UIViewController {
 
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Saving to GMP Airdrop..."
+        label.text = "Saving to GMP Transfer..."
         label.textAlignment = .center
         label.font = .preferredFont(forTextStyle: .headline)
 

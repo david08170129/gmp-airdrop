@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
 
     <application
-        android:label="GMP Airdrop"
+        android:label="GMP Transfer"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
