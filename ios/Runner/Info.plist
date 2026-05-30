@@ -45,6 +45,12 @@
 	<string>GMP Transfer uses the camera to scan local receiver QR codes.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>GMP Transfer connects to receivers on your local Wi-Fi network for offline file transfer.</string>
+	
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>GMP Transfer uses location only when required for local network device discovery and Wi-Fi transfer.</string>
+	
+	
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>GMP Transfer lets you choose photos and videos to send to a local receiver.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
